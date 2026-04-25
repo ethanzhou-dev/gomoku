@@ -836,7 +836,13 @@ function checkWinDirect(r, c, role) {
 
 function updateStatus() {
     if(over) return;
-    statusDiv.innerText = `轮到 ${me ? '黑子' : '白子'}`;
+    if (isOnline && myRole) {
+        let isMyTurn = (myRole === 1 && me) || (myRole === 2 && !me);
+        let colorStr = me ? '黑子' : '白子';
+        statusDiv.innerText = `轮到 ${isMyTurn ? '你' : '对方'} (${colorStr})`;
+    } else {
+        statusDiv.innerText = `轮到 ${me ? '黑子' : '白子'}`;
+    }
     statusDiv.style.color = me ? "#2c3e50" : "#c0392b";
     statusDiv.style.textShadow = me ? "none" : "1px 1px 0px rgba(255,255,255,0.5)";
 }
@@ -856,26 +862,20 @@ btnUndo.onclick = function() {
     if(over) over = false;
 
     if (isPvE) {
-        if(!me) return; 
+        let last = historyMoves.pop();
+        board[last.x][last.y] = 0;
         
-        if(historyMoves.length < 2 && historyMoves.length > 0) {
-            let move = historyMoves.pop();
-            board[move.x][move.y] = 0;
-            me = true;
-        } else if (historyMoves.length >= 2) {
-            let compMove = historyMoves.pop();
-            board[compMove.x][compMove.y] = 0;
-            
-            let playerMove = historyMoves.pop();
-            board[playerMove.x][playerMove.y] = 0;
-            
-            me = true;
+        let nextTurnRole = historyMoves.length % 2 === 0 ? 1 : 2;
+        if (nextTurnRole !== 1 && historyMoves.length > 0) {
+            last = historyMoves.pop();
+            board[last.x][last.y] = 0;
         }
     } else {
         let lastMove = historyMoves.pop();
         board[lastMove.x][lastMove.y] = 0;
-        me = !me;
     }
+    
+    me = (historyMoves.length % 2 === 0);
     
     updateStatus();
     drawBoard();
@@ -1143,7 +1143,9 @@ function setupSocketEvents() {
             socket.emit('undoResponse', { roomId: currentRoomId, agreed: true });
             
             let requestRole = myRole === 1 ? 2 : 1;
-            if (historyMoves.length > 0) {
+            if (historyMoves.length === 1 && requestRole === 2) {
+                // Cannot undo if requester hasn't played
+            } else if (historyMoves.length > 0) {
                 let last = historyMoves.pop();
                 board[last.x][last.y] = 0;
                 
@@ -1153,8 +1155,7 @@ function setupSocketEvents() {
                     board[last.x][last.y] = 0;
                 }
                 
-                nextTurnRole = historyMoves.length % 2 === 0 ? 1 : 2;
-                me = (myRole === nextTurnRole);
+                me = (historyMoves.length % 2 === 0);
                 
                 if (over) over = false;
                 if (isOnline && btnRestart) btnRestart.innerText = "退出房间";
@@ -1171,7 +1172,9 @@ function setupSocketEvents() {
         if (agreed) {
             showAlert('对方同意悔棋！');
             let requestRole = myRole;
-            if (historyMoves.length > 0) {
+            if (historyMoves.length === 1 && requestRole === 2) {
+                // Cannot undo
+            } else if (historyMoves.length > 0) {
                 let last = historyMoves.pop();
                 board[last.x][last.y] = 0;
                 
@@ -1181,8 +1184,7 @@ function setupSocketEvents() {
                     board[last.x][last.y] = 0;
                 }
                 
-                nextTurnRole = historyMoves.length % 2 === 0 ? 1 : 2;
-                me = (myRole === nextTurnRole);
+                me = (historyMoves.length % 2 === 0);
                 
                 if (over) over = false;
                 if (isOnline && btnRestart) btnRestart.innerText = "退出房间";
@@ -1273,12 +1275,3 @@ if(btnLeaveWaiting) btnLeaveWaiting.onclick = () => {
     if(modalWaiting) modalWaiting.style.display = 'none';
     if(modalRoomList) modalRoomList.style.display = 'flex';
 };
-
-// Handle game over return to room list
-const originalStartGame = startGame;
-startGame = function() {
-    originalStartGame();
-    if(isOnline && myRole && statusDiv) {
-        statusDiv.innerText = myRole === 1 ? (me ? '轮到 你' : '轮到 对方') : (me ? '轮到 对方' : '轮到 你');
-    }
-}
