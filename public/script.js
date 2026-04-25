@@ -194,12 +194,73 @@ const statusDiv = document.getElementById('status');
 const btnRestart = document.getElementById('btn-restart');
 const btnUndo = document.getElementById('btn-undo');
 const btnHint = document.getElementById('btn-hint');
+const btnSettings = document.getElementById('btn-settings');
+const modalSettings = document.getElementById('settings-modal');
+const btnCloseSettings = document.getElementById('btn-close-settings');
 const chkForbidden = document.getElementById('chk-forbidden');
 const modeRadios = document.getElementsByName('mode');
 const diffSelector = document.getElementById('diff-selector');
 const diffRadios = document.getElementsByName('difficulty');
+const sizeRadios = document.getElementsByName('boardSize');
 
-const n = 15; 
+function loadSettings() {
+    const savedForbidden = localStorage.getItem('gomoku_forbidden');
+    if (savedForbidden !== null) {
+        chkForbidden.checked = savedForbidden === 'true';
+    }
+
+    const savedBoardSize = localStorage.getItem('gomoku_boardSize');
+    if (savedBoardSize !== null) {
+        n = parseInt(savedBoardSize);
+    } else {
+        const isMobile = window.innerWidth <= 480 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (isMobile) n = 11;
+        else n = 15;
+    }
+    sizeRadios.forEach(radio => {
+        radio.checked = parseInt(radio.value) === n;
+    });
+
+    const savedMode = localStorage.getItem('gomoku_mode');
+    if (savedMode !== null) {
+        isPvE = savedMode === 'pve';
+        modeRadios.forEach(radio => {
+            radio.checked = radio.value === savedMode;
+        });
+        diffSelector.style.display = isPvE ? 'flex' : 'none';
+    }
+
+    const savedDiff = localStorage.getItem('gomoku_difficulty');
+    if (savedDiff !== null) {
+        aiDepth = parseInt(savedDiff);
+        diffRadios.forEach(radio => {
+            radio.checked = parseInt(radio.value) === aiDepth;
+        });
+    }
+}
+
+function saveSettings() {
+    localStorage.setItem('gomoku_forbidden', chkForbidden.checked);
+    const checkedSize = document.querySelector('input[name="boardSize"]:checked');
+    if (checkedSize) localStorage.setItem('gomoku_boardSize', checkedSize.value);
+    const checkedMode = document.querySelector('input[name="mode"]:checked');
+    if (checkedMode) localStorage.setItem('gomoku_mode', checkedMode.value);
+    const checkedDiff = document.querySelector('input[name="difficulty"]:checked');
+    if (checkedDiff) localStorage.setItem('gomoku_difficulty', checkedDiff.value);
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    loadSettings();
+    
+    btnSettings.onclick = () => {
+        modalSettings.style.display = 'flex';
+    };
+    
+    btnCloseSettings.onclick = () => {
+        modalSettings.style.display = 'none';
+    };
+});
+
 let cellSize = 30; 
 let margin = 15; 
 
@@ -263,10 +324,9 @@ function drawBoard() {
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, maxSize, maxSize);
     
-    // 业界公认的最佳实践：
-    // 15根线意味着有14个格子间距。总宽度 = 14 * cellSize + 2 * margin
+    // n根线意味着有n-1个格子间距。总宽度 = (n - 1) * cellSize + 2 * margin
     // 将边距设为 0.75 个格子，既能放下坐标，又不会过度挤压棋盘
-    cellSize = maxSize / 15.5; 
+    cellSize = maxSize / (n + 0.5); 
     margin = cellSize * 0.75;
 
     ctx.strokeStyle = "#4a2f18";
@@ -293,7 +353,7 @@ function drawBoard() {
     
     for (let i = 0; i < n; i++) {
         let letter = String.fromCharCode(65 + i); // A-O
-        let num = (15 - i).toString(); // 15-1
+        let num = (n - i).toString(); // n-1
         
         let cx = margin + i * cellSize;
         let cy = margin + i * cellSize;
@@ -312,7 +372,10 @@ function drawBoard() {
         ctx.fillText(num, textPos, cy);
     }
 
-    const stars = [[3,3], [11,3], [3,11], [11,11], [7,7]];
+    let stars = [];
+    if (n === 15) stars = [[3,3], [11,3], [3,11], [11,11], [7,7]];
+    else if (n === 13) stars = [[3,3], [9,3], [3,9], [9,9], [6,6]];
+    else if (n === 11) stars = [[2,2], [8,2], [2,8], [8,8], [5,5]];
     ctx.fillStyle = "#4a2f18";
     for(let star of stars) {
         ctx.beginPath();
@@ -728,10 +791,13 @@ if (btnHint) {
 
 btnRestart.onclick = startGame;
 
+chkForbidden.addEventListener('change', saveSettings);
+
 modeRadios.forEach(radio => {
     radio.addEventListener('change', function() {
         isPvE = this.value === 'pve';
         diffSelector.style.display = isPvE ? 'flex' : 'none';
+        saveSettings();
         startGame();
     });
 });
@@ -739,6 +805,15 @@ modeRadios.forEach(radio => {
 diffRadios.forEach(radio => {
     radio.addEventListener('change', function() {
         aiDepth = parseInt(this.value);
+        saveSettings();
+        startGame();
+    });
+});
+
+sizeRadios.forEach(radio => {
+    radio.addEventListener('change', function() {
+        n = parseInt(this.value);
+        saveSettings();
         startGame();
     });
 });

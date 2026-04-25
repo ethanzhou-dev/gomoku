@@ -24,39 +24,66 @@
             <button id="btn-restart" class="skeuo-btn">重新开始</button>
             <button id="btn-undo" class="skeuo-btn">悔棋</button>
             <button id="btn-hint" class="skeuo-btn" title="获取最佳落子位置">提示</button>
+            <button id="btn-settings" class="skeuo-btn">设置</button>
+        </div>
+    </div>
+
+    <!-- 设置模态框 -->
+    <div id="settings-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content game-container">
+            <h2 style="margin-bottom: 15px; color: #4a2f18; text-shadow: 1px 1px 0px rgba(255,255,255,0.6);">游戏设置</h2>
             
-            <div class="mode-selector">
-                <label class="skeuo-radio">
-                    <input type="checkbox" id="chk-forbidden">
-                    <span style="color: #a7281c;">开启禁手(仅黑棋)</span>
-                </label>
-            </div>
-            
-            <div class="mode-selector">
-                <label class="skeuo-radio">
-                    <input type="radio" name="mode" value="pve" checked>
-                    <span>人机对战</span>
-                </label>
-                <label class="skeuo-radio">
-                    <input type="radio" name="mode" value="pvp">
-                    <span>双人对战</span>
-                </label>
+            <div class="settings-group">
+                <div class="mode-selector" style="width: 100%; justify-content: center; margin-bottom: 10px;">
+                    <label class="skeuo-radio">
+                        <input type="checkbox" id="chk-forbidden">
+                        <span style="color: #a7281c;">开启禁手(仅黑棋)</span>
+                    </label>
+                </div>
+                
+                <div class="mode-selector" style="width: 100%; justify-content: center; margin-bottom: 10px;">
+                    <label class="skeuo-radio">
+                        <input type="radio" name="boardSize" value="11">
+                        <span>11×11</span>
+                    </label>
+                    <label class="skeuo-radio">
+                        <input type="radio" name="boardSize" value="13">
+                        <span>13×13</span>
+                    </label>
+                    <label class="skeuo-radio">
+                        <input type="radio" name="boardSize" value="15" checked>
+                        <span>15×15</span>
+                    </label>
+                </div>
+                
+                <div class="mode-selector" style="width: 100%; justify-content: center; margin-bottom: 10px;">
+                    <label class="skeuo-radio">
+                        <input type="radio" name="mode" value="pve" checked>
+                        <span>人机对战</span>
+                    </label>
+                    <label class="skeuo-radio">
+                        <input type="radio" name="mode" value="pvp">
+                        <span>双人对战</span>
+                    </label>
+                </div>
+
+                <div class="difficulty-selector" id="diff-selector" style="width: 100%; justify-content: center; margin-bottom: 15px; display: flex;">
+                    <label class="skeuo-radio">
+                        <input type="radio" name="difficulty" value="2">
+                        <span>简单</span>
+                    </label>
+                    <label class="skeuo-radio">
+                        <input type="radio" name="difficulty" value="4" checked>
+                        <span>普通</span>
+                    </label>
+                    <label class="skeuo-radio">
+                        <input type="radio" name="difficulty" value="6">
+                        <span>困难</span>
+                    </label>
+                </div>
             </div>
 
-            <div class="difficulty-selector" id="diff-selector" style="display: flex;">
-                <label class="skeuo-radio">
-                    <input type="radio" name="difficulty" value="2">
-                    <span>简单</span>
-                </label>
-                <label class="skeuo-radio">
-                    <input type="radio" name="difficulty" value="4" checked>
-                    <span>普通</span>
-                </label>
-                <label class="skeuo-radio">
-                    <input type="radio" name="difficulty" value="6">
-                    <span>困难</span>
-                </label>
-            </div>
+            <button id="btn-close-settings" class="skeuo-btn" style="width: 100%;">完成</button>
         </div>
     </div>
     <script src="/socket.io/socket.io.js"></script>
