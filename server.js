@@ -1,9 +1,14 @@
 const express = require('express');
+const compression = require('compression');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 
 const app = express();
+
+// Enable Gzip compression (standard and best practice for Express)
+app.use(compression());
+
 const server = http.createServer(app);
 const io = new Server(server);
 
