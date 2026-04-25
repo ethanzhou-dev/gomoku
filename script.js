@@ -257,12 +257,16 @@ function drawBoard() {
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, maxSize, maxSize);
     
-    cellSize = maxSize / n;
-    margin = cellSize / 2;
+    // 业界公认的最佳实践：
+    // 15根线意味着有14个格子间距。总宽度 = 14 * cellSize + 2 * margin
+    // 将边距设为 0.75 个格子，既能放下坐标，又不会过度挤压棋盘
+    cellSize = maxSize / 15.5; 
+    margin = cellSize * 0.75;
 
     ctx.strokeStyle = "#4a2f18";
     ctx.lineWidth = 1;
 
+    // 绘制网格
     for (let i = 0; i < n; i++) {
         ctx.beginPath();
         ctx.moveTo(margin, margin + i * cellSize);
@@ -275,6 +279,33 @@ function drawBoard() {
         ctx.stroke();
     }
     
+    // 绘制拟物风格坐标系 (木刻/烙印效果，简约版：仅左侧和顶部)
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    // 增大字体，使其更清晰易读
+    ctx.font = `bold ${cellSize * 0.45}px 'Times New Roman', serif`;
+    
+    for (let i = 0; i < n; i++) {
+        let letter = String.fromCharCode(65 + i); // A-O
+        let num = (15 - i).toString(); // 15-1
+        
+        let cx = margin + i * cellSize;
+        let cy = margin + i * cellSize;
+        
+        // 坐标放在边缘留白的中心略偏外的位置
+        let textPos = margin * 0.35;
+        
+        // 1. 刻痕高光 (白色向下偏移，模拟凹陷边缘受光)
+        ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+        ctx.fillText(letter, cx, textPos + 1); 
+        ctx.fillText(num, textPos + 1, cy + 1);    
+        
+        // 2. 刻痕暗部 (深褐色，模拟烙铁烧焦的凹陷底部)
+        ctx.fillStyle = "rgba(60, 30, 10, 0.85)";
+        ctx.fillText(letter, cx, textPos);
+        ctx.fillText(num, textPos, cy);
+    }
+
     const stars = [[3,3], [11,3], [3,11], [11,11], [7,7]];
     ctx.fillStyle = "#4a2f18";
     for(let star of stars) {
