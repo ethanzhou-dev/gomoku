@@ -1,8 +1,40 @@
-// 初始化 Socket.io 以备后续联机开发使用
-// const socket = io();
-// socket.on('connect', () => {
-//     console.log('Connected to server with ID:', socket.id);
-// });
+
+let socket = null;
+let currentRoomId = null;
+let myRole = null; // 1 (black) or 2 (white)
+let isOnline = false;
+
+// DOM Elements
+const pvpTypeSelector = document.getElementById('pvp-type-selector');
+const pvpTypeRadios = document.getElementsByName('pvpType');
+const modalNickname = document.getElementById('nickname-modal');
+const nicknameInput = document.getElementById('nickname-input');
+const btnSaveNickname = document.getElementById('btn-save-nickname');
+const btnCancelNickname = document.getElementById('btn-cancel-nickname');
+const modalRoomList = document.getElementById('room-list-modal');
+const roomListContainer = document.getElementById('room-list-container');
+const btnCreateRoom = document.getElementById('btn-create-room');
+const btnRefreshRooms = document.getElementById('btn-refresh-rooms');
+const btnLeaveRooms = document.getElementById('btn-leave-rooms');
+const currentNicknameSpan = document.getElementById('current-nickname');
+const btnChangeNickname = document.getElementById('btn-change-nickname');
+const modalWaiting = document.getElementById('waiting-modal');
+const waitingRoomIdSpan = document.getElementById('waiting-room-id');
+const btnLeaveWaiting = document.getElementById('btn-leave-waiting');
+const modalAlert = document.getElementById('alert-modal');
+const alertMsg = document.getElementById('alert-msg');
+const btnAlertOk = document.getElementById('btn-alert-ok');
+const alertTitle = document.getElementById('alert-title');
+
+function showAlert(msg, title = "提示") {
+    if(alertTitle) alertTitle.innerText = title;
+    if(alertMsg) alertMsg.innerText = msg;
+    if(modalAlert) modalAlert.style.display = 'flex';
+}
+if(btnAlertOk) btnAlertOk.onclick = () => modalAlert.style.display = 'none';
+
+
+
 
 const workerCode = `
 const WIN_SCORE = 10000000;
@@ -204,6 +236,13 @@ const diffRadios = document.getElementsByName('difficulty');
 const sizeRadios = document.getElementsByName('boardSize');
 
 function loadSettings() {
+    const savedPvpType = localStorage.getItem('gomoku_pvpType');
+    if (savedPvpType !== null) {
+        pvpTypeRadios.forEach(radio => {
+            radio.checked = radio.value === savedPvpType;
+        });
+    }
+
     const savedForbidden = localStorage.getItem('gomoku_forbidden');
     if (savedForbidden !== null) {
         chkForbidden.checked = savedForbidden === 'true';
@@ -225,9 +264,28 @@ function loadSettings() {
     if (savedMode !== null) {
         isPvE = savedMode === 'pve';
         modeRadios.forEach(radio => {
-            radio.checked = radio.value === savedMode;
-        });
+    radio.addEventListener('change', function() {
+        isPvE = this.value === 'pve';
         diffSelector.style.display = isPvE ? 'flex' : 'none';
+        if(pvpTypeSelector) pvpTypeSelector.style.display = isPvE ? 'none' : 'flex';
+        saveSettings();
+        if (!isOnline) startGame();
+    });
+});
+if(pvpTypeRadios) {
+    pvpTypeRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            saveSettings();
+            if (this.value === 'local') {
+                isOnline = false;
+                if(socket) { socket.disconnect(); socket = null; }
+                startGame();
+            }
+        });
+    });
+}
+        diffSelector.style.display = isPvE ? 'flex' : 'none';
+        if(pvpTypeSelector) pvpTypeSelector.style.display = isPvE ? 'none' : 'flex';
     }
 
     const savedDiff = localStorage.getItem('gomoku_difficulty');
@@ -247,6 +305,8 @@ function saveSettings() {
     if (checkedMode) localStorage.setItem('gomoku_mode', checkedMode.value);
     const checkedDiff = document.querySelector('input[name="difficulty"]:checked');
     if (checkedDiff) localStorage.setItem('gomoku_difficulty', checkedDiff.value);
+    const checkedPvpType = document.querySelector('input[name="pvpType"]:checked');
+    if (checkedPvpType) localStorage.setItem('gomoku_pvpType', checkedPvpType.value);
 }
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -258,6 +318,17 @@ window.addEventListener('DOMContentLoaded', () => {
     
     btnCloseSettings.onclick = () => {
         modalSettings.style.display = 'none';
+        const mode = document.querySelector('input[name="mode"]:checked').value;
+        const pvpTypeElem = document.querySelector('input[name="pvpType"]:checked');
+        const pvpType = pvpTypeElem ? pvpTypeElem.value : 'local';
+        
+        if (mode === 'pvp' && pvpType === 'online') {
+            enterOnlineMode();
+        } else {
+            isOnline = false;
+            if (socket) { socket.disconnect(); socket = null; }
+            startGame();
+        }
     };
 });
 
@@ -641,7 +712,8 @@ function checkForbidden(currentBoard, r, c) {
 
 canvas.onclick = function (e) {
     if (over || isAILoading || currentAnimation) return;
-    if (isPvE && !me) return; 
+    if (isPvE && !me) return;
+    if (isOnline && (!me && myRole === 1 || me && myRole === 2)) return; 
 
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -674,6 +746,9 @@ function playMove(i, j) {
     board[i][j] = role;
     
     historyMoves.push({x: i, y: j, role: role});
+    if (isOnline && ((role === 1 && myRole === 1) || (role === 2 && myRole === 2))) {
+        socket.emit('playMove', { roomId: currentRoomId, r: i, c: j, role: role });
+    }
     
     currentAnimation = {
         x: i,
@@ -686,7 +761,24 @@ function playMove(i, j) {
 
     if (checkWinDirect(i, j, role)) {
         setTimeout(() => {
-            statusDiv.innerText = (me ? "黑子" : "白子") + " 胜利！";
+            if(isOnline) {
+        if (me && myRole === 1 || !me && myRole === 2) {
+            statusDiv.innerText = '你赢了！';
+        } else {
+            statusDiv.innerText = '你输了！';
+        }
+        setTimeout(() => {
+             showAlert(statusDiv.innerText + ' 点击确定返回大厅');
+             btnAlertOk.onclick = () => {
+                 modalAlert.style.display = 'none';
+                 if (socket && currentRoomId) socket.emit('leaveRoom', currentRoomId);
+                 currentRoomId = null;
+                 modalRoomList.style.display = 'flex';
+             };
+        }, 1500);
+    } else {
+        statusDiv.innerText = (me ? "黑子" : "白子") + " 胜利！";
+    }
             statusDiv.style.color = "#c0392b";
             over = true;
         }, 400); 
@@ -747,7 +839,11 @@ function updateStatus() {
 }
 
 btnUndo.onclick = function() {
-    if (historyMoves.length === 0 || (over && !isPvE) || isAILoading) return; 
+    if (historyMoves.length === 0 || (over && !isPvE && !isOnline) || isAILoading) return;
+    if (isOnline) {
+        showAlert('联机模式不支持悔棋');
+        return;
+    } 
     
     currentAnimation = null;
     hintPos = null;
@@ -782,6 +878,10 @@ btnUndo.onclick = function() {
 if (btnHint) {
     btnHint.onclick = function() {
         if (over || isAILoading || currentAnimation || historyMoves.length === 0) return;
+        if (isOnline) {
+            showAlert('联机模式不支持提示');
+            return;
+        }
         if (isPvE && !me) return; 
         
         isAILoading = true;
@@ -806,9 +906,23 @@ modeRadios.forEach(radio => {
     radio.addEventListener('change', function() {
         isPvE = this.value === 'pve';
         diffSelector.style.display = isPvE ? 'flex' : 'none';
+        if(pvpTypeSelector) pvpTypeSelector.style.display = isPvE ? 'none' : 'flex';
         saveSettings();
-        startGame();
+        if (!isOnline) startGame();
     });
+});
+if(pvpTypeRadios) {
+    pvpTypeRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            saveSettings();
+            if (this.value === 'local') {
+                isOnline = false;
+                if(socket) { socket.disconnect(); socket = null; }
+                startGame();
+            }
+        });
+    });
+}
 });
 
 diffRadios.forEach(radio => {
@@ -863,3 +977,168 @@ function startGame() {
 }
 
 window.onload = startGame;
+
+
+function enterOnlineMode() {
+    isOnline = true;
+    let nickname = localStorage.getItem('gomoku_nickname');
+    if (!nickname) {
+        if(modalNickname) modalNickname.style.display = 'flex';
+    } else {
+        connectSocket(nickname);
+    }
+}
+
+if(btnSaveNickname) btnSaveNickname.onclick = () => {
+    const name = nicknameInput.value.trim();
+    if (name) {
+        localStorage.setItem('gomoku_nickname', name);
+        modalNickname.style.display = 'none';
+        connectSocket(name);
+    } else {
+        showAlert('昵称不能为空');
+    }
+};
+
+if(btnCancelNickname) btnCancelNickname.onclick = () => {
+    modalNickname.style.display = 'none';
+    if (!socket) {
+        const localRadio = document.querySelector('input[name="pvpType"][value="local"]');
+        if(localRadio) localRadio.checked = true;
+        saveSettings();
+        isOnline = false;
+        startGame();
+    }
+};
+
+if(btnChangeNickname) btnChangeNickname.onclick = (e) => {
+    e.preventDefault();
+    nicknameInput.value = localStorage.getItem('gomoku_nickname') || '';
+    modalNickname.style.display = 'flex';
+};
+
+function connectSocket(nickname) {
+    if (!socket) {
+        socket = io();
+        setupSocketEvents();
+    }
+    socket.emit('setNickname', nickname);
+    if(currentNicknameSpan) currentNicknameSpan.innerText = nickname;
+    if(modalRoomList) modalRoomList.style.display = 'flex';
+}
+
+function setupSocketEvents() {
+    socket.on('roomList', (rooms) => {
+        if(!roomListContainer) return;
+        roomListContainer.innerHTML = '';
+        if (rooms.length === 0) {
+            roomListContainer.innerHTML = '<div style="text-align: center; color: #555; padding: 20px;">暂无房间，去创建一个吧！</div>';
+            return;
+        }
+        rooms.forEach(room => {
+            const div = document.createElement('div');
+            div.className = 'room-item';
+            div.innerHTML = `
+                <div class="room-info">
+                    <div class="room-name">${room.hostName} 的房间</div>
+                    <div class="room-details">大小: ${room.size}×${room.size} | 禁手: ${room.forbidden ? '开' : '关'}</div>
+                </div>
+                <button class="skeuo-btn join-btn" data-id="${room.id}" style="padding: 6px 12px; font-size: 14px;">加入</button>
+            `;
+            roomListContainer.appendChild(div);
+        });
+        
+        document.querySelectorAll('.join-btn').forEach(btn => {
+            btn.onclick = function() {
+                const roomId = this.getAttribute('data-id');
+                socket.emit('joinRoom', roomId);
+            };
+        });
+    });
+
+    socket.on('roomCreated', (roomId) => {
+        currentRoomId = roomId;
+        if(modalRoomList) modalRoomList.style.display = 'none';
+        if(modalWaiting) modalWaiting.style.display = 'flex';
+        if(waitingRoomIdSpan) waitingRoomIdSpan.innerText = roomId;
+    });
+
+    socket.on('gameStart', (data) => {
+        if(modalWaiting) modalWaiting.style.display = 'none';
+        if(modalRoomList) modalRoomList.style.display = 'none';
+        
+        currentRoomId = data.roomId;
+        myRole = (socket.id === data.hostId) ? 1 : 2;
+        
+        n = parseInt(data.size);
+        if(chkForbidden) chkForbidden.checked = data.forbidden;
+        saveSettings();
+        
+        startGame();
+        showAlert('对战开始！你是' + (myRole === 1 ? '黑子' : '白子'));
+    });
+
+    socket.on('opponentMoved', (data) => {
+        if (!over) {
+            playMove(data.r, data.c);
+        }
+    });
+
+    socket.on('opponentLeft', () => {
+        if (isOnline) {
+            showAlert('对手已离开房间！');
+            over = true;
+            setTimeout(() => {
+                currentRoomId = null;
+                myRole = null;
+                if(modalAlert) modalAlert.style.display = 'none';
+                if(modalRoomList) modalRoomList.style.display = 'flex';
+            }, 2000);
+        }
+    });
+
+    socket.on('errorMsg', (msg) => {
+        showAlert(msg);
+    });
+}
+
+if(btnCreateRoom) btnCreateRoom.onclick = () => {
+    if (socket) {
+        socket.emit('createRoom', {
+            boardSize: document.querySelector('input[name="boardSize"]:checked').value,
+            forbidden: chkForbidden ? chkForbidden.checked : false
+        });
+    }
+};
+
+if(btnRefreshRooms) btnRefreshRooms.onclick = () => {
+    if (socket) socket.emit('getRoomList');
+};
+
+if(btnLeaveRooms) btnLeaveRooms.onclick = () => {
+    if(modalRoomList) modalRoomList.style.display = 'none';
+    isOnline = false;
+    if (socket) { socket.disconnect(); socket = null; }
+    const localRadio = document.querySelector('input[name="pvpType"][value="local"]');
+    if(localRadio) localRadio.checked = true;
+    saveSettings();
+    startGame();
+};
+
+if(btnLeaveWaiting) btnLeaveWaiting.onclick = () => {
+    if (socket && currentRoomId) {
+        socket.emit('leaveRoom', currentRoomId);
+        currentRoomId = null;
+    }
+    if(modalWaiting) modalWaiting.style.display = 'none';
+    if(modalRoomList) modalRoomList.style.display = 'flex';
+};
+
+// Handle game over return to room list
+const originalStartGame = startGame;
+startGame = function() {
+    originalStartGame();
+    if(isOnline && myRole && statusDiv) {
+        statusDiv.innerText = myRole === 1 ? (me ? '轮到 你' : '轮到 对方') : (me ? '轮到 对方' : '轮到 你');
+    }
+}
