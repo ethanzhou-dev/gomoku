@@ -120,7 +120,7 @@ canvas {
     transform: translateY(2px);
 }
 
-.mode-selector {
+.mode-selector, .difficulty-selector {
     display: flex;
     gap: 12px;
     align-items: center;

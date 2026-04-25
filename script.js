@@ -1,9 +1,194 @@
+const workerCode = `
+const WIN_SCORE = 10000000;
+
+self.onmessage = function(e) {
+    const { board, depth, aiRole } = e.data;
+    const humanRole = aiRole === 1 ? 2 : 1;
+    const size = board.length;
+    let bestMove = null;
+
+    function getCandidates(currentBoard) {
+        let candidates = [];
+        let hasPiece = false;
+        let visited = Array.from({length: size}, () => new Array(size).fill(false));
+
+        for (let i = 0; i < size; i++) {
+            for (let j = 0; j < size; j++) {
+                if (currentBoard[i][j] !== 0) {
+                    hasPiece = true;
+                    for (let x = Math.max(0, i - 2); x <= Math.min(size - 1, i + 2); x++) {
+                        for (let y = Math.max(0, j - 2); y <= Math.min(size - 1, j + 2); y++) {
+                            if (currentBoard[x][y] === 0 && !visited[x][y]) {
+                                visited[x][y] = true;
+                                candidates.push({r: x, c: y});
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        if (!hasPiece) {
+            return [{r: Math.floor(size/2), c: Math.floor(size/2)}];
+        }
+        
+        candidates.forEach(pos => {
+            pos.score = evaluatePoint(currentBoard, pos.r, pos.c, aiRole) + evaluatePoint(currentBoard, pos.r, pos.c, humanRole);
+        });
+        candidates.sort((a, b) => b.score - a.score);
+        
+        let maxCandidates = depth >= 6 ? 15 : 25;
+        return candidates.slice(0, maxCandidates);
+    }
+
+    function evaluatePoint(currentBoard, r, c, role) {
+        let score = 0;
+        const dirs = [[1,0], [0,1], [1,1], [1,-1]];
+        
+        for (let dir of dirs) {
+            let count = 1;
+            let block = 0;
+            
+            for(let sign of [1, -1]) {
+                for (let i = 1; i <= 4; i++) {
+                    let nr = r + dir[0] * i * sign;
+                    let nc = c + dir[1] * i * sign;
+                    if (nr < 0 || nr >= size || nc < 0 || nc >= size) {
+                        block++; break;
+                    }
+                    if (currentBoard[nr][nc] === role) {
+                        count++;
+                    } else if (currentBoard[nr][nc] === 0) {
+                        break; 
+                    } else {
+                        block++; break; 
+                    }
+                }
+            }
+            
+            if (count >= 5) score += 100000;
+            else if (block === 0) {
+                if (count === 4) score += 10000;
+                else if (count === 3) score += 1000;
+                else if (count === 2) score += 100;
+                else if (count === 1) score += 10;
+            } else if (block === 1) {
+                if (count === 4) score += 1000;
+                else if (count === 3) score += 100;
+                else if (count === 2) score += 10;
+                else if (count === 1) score += 1;
+            }
+        }
+        return score;
+    }
+
+    function evaluateBoard(currentBoard) {
+        let aiScore = 0;
+        let humanScore = 0;
+        for (let i = 0; i < size; i++) {
+            for (let j = 0; j < size; j++) {
+                if (currentBoard[i][j] === aiRole) {
+                    aiScore += evaluatePoint(currentBoard, i, j, aiRole);
+                } else if (currentBoard[i][j] === humanRole) {
+                    humanScore += evaluatePoint(currentBoard, i, j, humanRole);
+                }
+            }
+        }
+        return aiScore - humanScore * 1.2; 
+    }
+
+    function minimax(currentBoard, depth, alpha, beta, isMaximizing) {
+        if (depth === 0) {
+            return evaluateBoard(currentBoard);
+        }
+
+        const candidates = getCandidates(currentBoard);
+        if (candidates.length === 0) return 0;
+
+        if (isMaximizing) {
+            let maxEval = -Infinity;
+            for (let pos of candidates) {
+                currentBoard[pos.r][pos.c] = aiRole;
+                
+                if (evaluatePoint(currentBoard, pos.r, pos.c, aiRole) >= 100000) {
+                    currentBoard[pos.r][pos.c] = 0;
+                    return WIN_SCORE + depth;
+                }
+                
+                let eval = minimax(currentBoard, depth - 1, alpha, beta, false);
+                currentBoard[pos.r][pos.c] = 0;
+                
+                maxEval = Math.max(maxEval, eval);
+                alpha = Math.max(alpha, eval);
+                if (beta <= alpha) break; 
+            }
+            return maxEval;
+        } else {
+            let minEval = Infinity;
+            for (let pos of candidates) {
+                currentBoard[pos.r][pos.c] = humanRole;
+                
+                if (evaluatePoint(currentBoard, pos.r, pos.c, humanRole) >= 100000) {
+                    currentBoard[pos.r][pos.c] = 0;
+                    return -WIN_SCORE - depth; 
+                }
+
+                let eval = minimax(currentBoard, depth - 1, alpha, beta, true);
+                currentBoard[pos.r][pos.c] = 0;
+                
+                minEval = Math.min(minEval, eval);
+                beta = Math.min(beta, eval);
+                if (beta <= alpha) break; 
+            }
+            return minEval;
+        }
+    }
+
+    let candidates = getCandidates(board);
+    
+    for(let pos of candidates) {
+        board[pos.r][pos.c] = aiRole;
+        if(evaluatePoint(board, pos.r, pos.c, aiRole) >= 100000) {
+            self.postMessage({r: pos.r, c: pos.c});
+            return;
+        }
+        board[pos.r][pos.c] = 0;
+    }
+    for(let pos of candidates) {
+        board[pos.r][pos.c] = humanRole;
+        if(evaluatePoint(board, pos.r, pos.c, humanRole) >= 100000) {
+            self.postMessage({r: pos.r, c: pos.c});
+            return;
+        }
+        board[pos.r][pos.c] = 0;
+    }
+
+    let alpha = -Infinity;
+    let beta = Infinity;
+
+    for (let pos of candidates) {
+        board[pos.r][pos.c] = aiRole;
+        let eval = minimax(board, depth - 1, alpha, beta, false);
+        board[pos.r][pos.c] = 0;
+
+        if (eval > alpha) {
+            alpha = eval;
+            bestMove = pos;
+        }
+    }
+
+    self.postMessage(bestMove || candidates[0]);
+};
+`;
+
 const canvas = document.getElementById('chessBoard');
 const ctx = canvas.getContext('2d');
 const statusDiv = document.getElementById('status');
 const btnRestart = document.getElementById('btn-restart');
 const btnUndo = document.getElementById('btn-undo');
 const modeRadios = document.getElementsByName('mode');
+const diffSelector = document.getElementById('diff-selector');
+const diffRadios = document.getElementsByName('difficulty');
 
 // 游戏参数
 const n = 15; // 15x15 棋盘
@@ -12,19 +197,15 @@ let margin = 15; // 边缘留白
 
 // 状态变量
 let board = [];
-let me = true; // true: 黑子, false: 白子
+let me = true; // true: 黑子(玩家1), false: 白子(玩家2/AI)
 let over = false;
 let historyMoves = []; // 悔棋用的历史记录
 
 // 人机对战相关
 let isPvE = false;
-
-// 赢法数组
-let wins = [];
-// 赢法统计数组
-let myWin = [];
-let computerWin = [];
-let count = 0; // 总赢法数
+let aiDepth = 4; // 默认难度普通 (深度4)
+let isAILoading = false; // AI计算中锁定棋盘
+let aiWorker = null; // Web Worker
 
 // 初始化棋盘数据
 function initBoard() {
@@ -37,70 +218,11 @@ function initBoard() {
     }
 }
 
-// 初始化赢法数组
-function initWins() {
-    wins = [];
-    for (let i = 0; i < n; i++) {
-        wins[i] = [];
-        for (let j = 0; j < n; j++) {
-            wins[i][j] = [];
-        }
-    }
-    count = 0;
-
-    // 横线赢法
-    for (let i = 0; i < n; i++) {
-        for (let j = 0; j < n - 4; j++) {
-            for (let k = 0; k < 5; k++) {
-                wins[i][j + k][count] = true;
-            }
-            count++;
-        }
-    }
-
-    // 竖线赢法
-    for (let i = 0; i < n; i++) {
-        for (let j = 0; j < n - 4; j++) {
-            for (let k = 0; k < 5; k++) {
-                wins[j + k][i][count] = true;
-            }
-            count++;
-        }
-    }
-
-    // 正斜线赢法
-    for (let i = 0; i < n - 4; i++) {
-        for (let j = 0; j < n - 4; j++) {
-            for (let k = 0; k < 5; k++) {
-                wins[i + k][j + k][count] = true;
-            }
-            count++;
-        }
-    }
-
-    // 反斜线赢法
-    for (let i = 0; i < n - 4; i++) {
-        for (let j = n - 1; j > 3; j--) {
-            for (let k = 0; k < 5; k++) {
-                wins[i + k][j - k][count] = true;
-            }
-            count++;
-        }
-    }
-
-    for (let i = 0; i < count; i++) {
-        myWin[i] = 0;
-        computerWin[i] = 0;
-    }
-}
-
 // 绘制棋盘
 function drawBoard() {
-    // 重新计算尺寸以适应不同屏幕
-    const containerWidth = canvas.parentElement.clientWidth - 12; // 减去容器内边距
+    const containerWidth = canvas.parentElement.clientWidth - 12;
     const maxSize = Math.min(450, containerWidth);
     
-    // 修复移动端模糊，使用设备像素比
     const dpr = window.devicePixelRatio || 1;
     canvas.width = maxSize * dpr;
     canvas.height = maxSize * dpr;
@@ -117,20 +239,17 @@ function drawBoard() {
     ctx.lineWidth = 1;
 
     for (let i = 0; i < n; i++) {
-        // 横线
         ctx.beginPath();
         ctx.moveTo(margin, margin + i * cellSize);
         ctx.lineTo(maxSize - margin, margin + i * cellSize);
         ctx.stroke();
 
-        // 竖线
         ctx.beginPath();
         ctx.moveTo(margin + i * cellSize, margin);
         ctx.lineTo(margin + i * cellSize, maxSize - margin);
         ctx.stroke();
     }
     
-    // 画天元和星位 (拟物细节)
     const stars = [[3,3], [11,3], [3,11], [11,11], [7,7]];
     ctx.fillStyle = "#4a2f18";
     for(let star of stars) {
@@ -139,7 +258,6 @@ function drawBoard() {
         ctx.fill();
     }
 
-    // 重绘所有棋子
     for (let i = 0; i < n; i++) {
         for (let j = 0; j < n; j++) {
             if (board[i][j] === 1) drawChess(i, j, true);
@@ -147,26 +265,22 @@ function drawBoard() {
         }
     }
     
-    // 标记最后一步
     if(historyMoves.length > 0) {
         let lastMove = historyMoves[historyMoves.length - 1];
         drawLastMoveMarker(lastMove.x, lastMove.y);
     }
 }
 
-// 绘制棋子 (拟物风格，3D高光阴影)
 function drawChess(i, j, isBlack) {
     const x = margin + i * cellSize;
     const y = margin + j * cellSize;
     const radius = cellSize / 2 * 0.85;
 
-    // 阴影
     ctx.beginPath();
     ctx.arc(x + 2, y + 2, radius, 0, 2 * Math.PI);
     ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
     ctx.fill();
 
-    // 棋子本体及高光渐变
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, 2 * Math.PI);
     
@@ -184,7 +298,6 @@ function drawChess(i, j, isBlack) {
     ctx.fillStyle = gradient;
     ctx.fill();
     
-    // 增加一点高光反射让拟物感更强
     ctx.beginPath();
     ctx.arc(x - radius/3, y - radius/3, radius/4, 0, 2 * Math.PI);
     const highlight = ctx.createRadialGradient(x - radius/3, y - radius/3, 0, x - radius/3, y - radius/3, radius/4);
@@ -210,8 +323,8 @@ function drawLastMoveMarker(i, j) {
 
 // 落子交互
 canvas.onclick = function (e) {
-    if (over) return;
-    if (isPvE && !me) return; // 人机模式且轮到电脑时不能点击
+    if (over || isAILoading) return;
+    if (isPvE && !me) return; 
 
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -226,14 +339,13 @@ canvas.onclick = function (e) {
 };
 
 function playMove(i, j) {
-    board[i][j] = me ? 1 : 2;
+    let role = me ? 1 : 2;
+    board[i][j] = role;
     
-    // 记录历史
-    historyMoves.push({x: i, y: j, me: me, myWinRecord: [...myWin], compWinRecord: [...computerWin]});
-
+    historyMoves.push({x: i, y: j, role: role});
     drawBoard();
 
-    if (checkWin(i, j, me)) {
+    if (checkWinDirect(i, j, role)) {
         statusDiv.innerText = (me ? "黑子" : "白子") + " 胜利！";
         statusDiv.style.color = "#c0392b";
         over = true;
@@ -244,23 +356,44 @@ function playMove(i, j) {
     updateStatus();
 
     if (isPvE && !me && !over) {
-        statusDiv.innerText = "电脑思考中...";
-        setTimeout(computerAI, 300); // 稍微延迟一下
+        statusDiv.innerText = "专业AI思考中...";
+        isAILoading = true;
+        
+        // 使用 Web Worker 进行多线程计算，防止 UI 卡顿
+        if(!aiWorker) {
+            const blob = new Blob([workerCode], {type: 'application/javascript'});
+            const workerUrl = URL.createObjectURL(blob);
+            aiWorker = new Worker(workerUrl);
+            aiWorker.onmessage = function(e) {
+                isAILoading = false;
+                const bestMove = e.data;
+                playMove(bestMove.r, bestMove.c);
+            };
+        }
+        
+        // 传递当前棋盘状态给 Worker
+        aiWorker.postMessage({
+            board: board,
+            depth: aiDepth,
+            aiRole: 2
+        });
     }
 }
 
-function checkWin(i, j, isBlack) {
-    let winArray = isBlack ? myWin : computerWin;
-    let oppWinArray = isBlack ? computerWin : myWin;
-
-    for (let k = 0; k < count; k++) {
-        if (wins[i][j][k]) {
-            winArray[k]++;
-            oppWinArray[k] = 6; // 对方不可能在此赢法上获胜了
-            if (winArray[k] === 5) {
-                return true;
+// 直接基于当前落子点扫描判断胜负
+function checkWinDirect(r, c, role) {
+    const dirs = [[1,0], [0,1], [1,1], [1,-1]];
+    for (let dir of dirs) {
+        let count = 1;
+        for(let sign of [1, -1]) {
+            for(let i=1; i<=4; i++) {
+                let nr = r + dir[0]*i*sign;
+                let nc = c + dir[1]*i*sign;
+                if(nr>=0 && nr<n && nc>=0 && nc<n && board[nr][nc] === role) count++;
+                else break;
             }
         }
+        if (count >= 5) return true;
     }
     return false;
 }
@@ -271,114 +404,18 @@ function updateStatus() {
     statusDiv.style.color = me ? "#2c3e50" : "#fff";
 }
 
-// 简单 AI 算法
-function computerAI() {
-    let myScore = [];
-    let computerScore = [];
-    let max = 0;
-    let u = 0, v = 0;
-
-    for (let i = 0; i < n; i++) {
-        myScore[i] = [];
-        computerScore[i] = [];
-        for (let j = 0; j < n; j++) {
-            myScore[i][j] = 0;
-            computerScore[i][j] = 0;
-        }
-    }
-
-    for (let i = 0; i < n; i++) {
-        for (let j = 0; j < n; j++) {
-            if (board[i][j] === 0) {
-                for (let k = 0; k < count; k++) {
-                    if (wins[i][j][k]) {
-                        // 拦截玩家
-                        if (myWin[k] === 1) myScore[i][j] += 200;
-                        else if (myWin[k] === 2) myScore[i][j] += 400;
-                        else if (myWin[k] === 3) myScore[i][j] += 2000;
-                        else if (myWin[k] === 4) myScore[i][j] += 10000;
-
-                        // 电脑自己获胜
-                        if (computerWin[k] === 1) computerScore[i][j] += 220;
-                        else if (computerWin[k] === 2) computerScore[i][j] += 420;
-                        else if (computerWin[k] === 3) computerScore[i][j] += 2100;
-                        else if (computerWin[k] === 4) computerScore[i][j] += 20000;
-                    }
-                }
-
-                if (myScore[i][j] > max) {
-                    max = myScore[i][j];
-                    u = i;
-                    v = j;
-                } else if (myScore[i][j] === max) {
-                    if (computerScore[i][j] > computerScore[u][v]) {
-                        u = i;
-                        v = j;
-                    }
-                }
-
-                if (computerScore[i][j] > max) {
-                    max = computerScore[i][j];
-                    u = i;
-                    v = j;
-                } else if (computerScore[i][j] === max) {
-                    if (myScore[i][j] > myScore[u][v]) {
-                        u = i;
-                        v = j;
-                    }
-                }
-            }
-        }
-    }
-    
-    // 如果是电脑的第一步，且没有防守压力
-    if (historyMoves.length === 1 && max < 400) {
-        // 下在玩家附近
-        let lastPlayerMove = historyMoves[0];
-        let offsets = [[-1,-1], [-1,0], [-1,1], [0,-1], [0,1], [1,-1], [1,0], [1,1]];
-        let validOffsets = offsets.filter(off => {
-            let ni = lastPlayerMove.x + off[0];
-            let nj = lastPlayerMove.y + off[1];
-            return ni>=0 && ni<n && nj>=0 && nj<n && board[ni][nj]===0;
-        });
-        if(validOffsets.length > 0) {
-             let randOff = validOffsets[Math.floor(Math.random()*validOffsets.length)];
-             u = lastPlayerMove.x + randOff[0];
-             v = lastPlayerMove.y + randOff[1];
-        }
-    } else if (max === 0) { // 兜底随机下子
-         let emptySpots = [];
-         for(let i=0;i<n;i++){
-             for(let j=0;j<n;j++){
-                 if(board[i][j]===0) emptySpots.push({i,j});
-             }
-         }
-         if(emptySpots.length > 0) {
-             let spot = emptySpots[Math.floor(Math.random() * emptySpots.length)];
-             u = spot.i; v = spot.j;
-         }
-    }
-
-    playMove(u, v);
-}
-
 // 悔棋逻辑
 btnUndo.onclick = function() {
-    if (historyMoves.length === 0 || (over && !isPvE)) return; 
+    if (historyMoves.length === 0 || (over && !isPvE) || isAILoading) return; 
     
-    // 如果游戏结束，允许悔棋继续
     if(over) over = false;
 
     if (isPvE) {
-        // 人机模式下，如果当前是电脑思考阶段，不允许悔棋
-        if(!me) return;
+        if(!me) return; // 电脑回合不允许悔棋
         
-        // 人机对战需要撤回两步（电脑一步，玩家一步）
         if(historyMoves.length < 2 && historyMoves.length > 0) {
-            // 只有玩家下了一步的情况
             let move = historyMoves.pop();
             board[move.x][move.y] = 0;
-            resetWinRecordsToLast();
             me = true;
         } else if (historyMoves.length >= 2) {
             let compMove = historyMoves.pop();
@@ -387,14 +424,11 @@ btnUndo.onclick = function() {
             let playerMove = historyMoves.pop();
             board[playerMove.x][playerMove.y] = 0;
             
-            resetWinRecordsToLast();
-            me = true; // 悔棋后必定是玩家回合
+            me = true;
         }
     } else {
-        // 双人模式撤回一步
         let lastMove = historyMoves.pop();
         board[lastMove.x][lastMove.y] = 0;
-        resetWinRecordsToLast();
         me = !me;
     }
     
@@ -402,53 +436,55 @@ btnUndo.onclick = function() {
     drawBoard();
 };
 
-function resetWinRecordsToLast() {
-    if (historyMoves.length > 0) {
-        let state = historyMoves[historyMoves.length - 1];
-        myWin = [...state.myWinRecord];
-        computerWin = [...state.compWinRecord];
-    } else {
-         for (let i = 0; i < count; i++) {
-            myWin[i] = 0;
-            computerWin[i] = 0;
-        }
-    }
-}
-
 btnRestart.onclick = startGame;
 
 modeRadios.forEach(radio => {
     radio.addEventListener('change', function() {
         isPvE = this.value === 'pve';
+        diffSelector.style.display = isPvE ? 'flex' : 'none';
+        startGame();
+    });
+});
+
+diffRadios.forEach(radio => {
+    radio.addEventListener('change', function() {
+        aiDepth = parseInt(this.value);
         startGame();
     });
 });
 
 window.addEventListener('resize', () => {
-    // 防抖
     clearTimeout(window.resizeTimer);
     window.resizeTimer = setTimeout(drawBoard, 200);
 });
 
 function startGame() {
+    // 终止之前的AI计算
+    if(aiWorker) {
+        aiWorker.terminate();
+        aiWorker = null;
+    }
+    
     initBoard();
-    initWins();
     me = true;
     over = false;
+    isAILoading = false;
     historyMoves = [];
     statusDiv.style.color = "#2c3e50";
     
-    // 检查当前模式
-    const checkedRadio = document.querySelector('input[name="mode"]:checked');
-    if(checkedRadio) {
-        isPvE = checkedRadio.value === 'pve';
+    const checkedMode = document.querySelector('input[name="mode"]:checked');
+    if(checkedMode) {
+        isPvE = checkedMode.value === 'pve';
+        diffSelector.style.display = isPvE ? 'flex' : 'none';
+    }
+    
+    const checkedDiff = document.querySelector('input[name="difficulty"]:checked');
+    if(checkedDiff) {
+        aiDepth = parseInt(checkedDiff.value);
     }
     
     updateStatus();
-    
-    // 确保DOM加载后绘制
     setTimeout(drawBoard, 50);
 }
 
-// 页面加载完毕后启动
 window.onload = startGame;
