@@ -2,7 +2,7 @@ const workerCode = `
 const WIN_SCORE = 10000000;
 
 self.onmessage = function(e) {
-    const { board, depth, aiRole } = e.data;
+    const { board, depth, aiRole, isHint } = e.data;
     const humanRole = aiRole === 1 ? 2 : 1;
     const size = board.length;
     let bestMove = null;
@@ -149,7 +149,7 @@ self.onmessage = function(e) {
     for(let pos of candidates) {
         board[pos.r][pos.c] = aiRole;
         if(evaluatePoint(board, pos.r, pos.c, aiRole) >= 100000) {
-            self.postMessage({r: pos.r, c: pos.c});
+            self.postMessage({r: pos.r, c: pos.c, isHint: isHint});
             return;
         }
         board[pos.r][pos.c] = 0;
@@ -157,7 +157,7 @@ self.onmessage = function(e) {
     for(let pos of candidates) {
         board[pos.r][pos.c] = humanRole;
         if(evaluatePoint(board, pos.r, pos.c, humanRole) >= 100000) {
-            self.postMessage({r: pos.r, c: pos.c});
+            self.postMessage({r: pos.r, c: pos.c, isHint: isHint});
             return;
         }
         board[pos.r][pos.c] = 0;
@@ -177,7 +177,8 @@ self.onmessage = function(e) {
         }
     }
 
-    self.postMessage(bestMove || candidates[0]);
+    let result = bestMove || candidates[0];
+    self.postMessage({r: result.r, c: result.c, isHint: isHint});
 };
 `;
 
@@ -186,36 +187,55 @@ const ctx = canvas.getContext('2d');
 const statusDiv = document.getElementById('status');
 const btnRestart = document.getElementById('btn-restart');
 const btnUndo = document.getElementById('btn-undo');
+const btnHint = document.getElementById('btn-hint');
+const chkForbidden = document.getElementById('chk-forbidden');
 const modeRadios = document.getElementsByName('mode');
 const diffSelector = document.getElementById('diff-selector');
 const diffRadios = document.getElementsByName('difficulty');
 
-// 游戏参数
-const n = 15; // 15x15 棋盘
-let cellSize = 30; // 默认格子大小
-let margin = 15; // 边缘留白
+const n = 15; 
+let cellSize = 30; 
+let margin = 15; 
 
-// 状态变量
 let board = [];
-let me = true; // true: 黑子(玩家1), false: 白子(玩家2/AI)
+let me = true; 
 let over = false;
-let historyMoves = []; // 悔棋用的历史记录
+let historyMoves = [];
+let hintPos = null;
 
-// 人机对战相关
 let isPvE = false;
-let aiDepth = 4; // 默认难度普通 (深度4)
-let isAILoading = false; // AI计算中锁定棋盘
-let aiWorker = null; // Web Worker
+let aiDepth = 4;
+let isAILoading = false; 
+let aiWorker = null; 
 
-// 动效状态
 let currentAnimation = null; 
 
-// 物理缓动函数（优雅的缓出）
 function easeOutQuint(x) {
     return 1 - Math.pow(1 - x, 5);
 }
 
-// 初始化棋盘数据
+function initWorker() {
+    if (aiWorker) {
+        aiWorker.terminate();
+    }
+    const blob = new Blob([workerCode], {type: 'application/javascript'});
+    const workerUrl = URL.createObjectURL(blob);
+    aiWorker = new Worker(workerUrl);
+    
+    aiWorker.onmessage = function(e) {
+        isAILoading = false;
+        const data = e.data;
+        
+        if (data.isHint) {
+            hintPos = { x: data.r, y: data.c };
+            updateStatus();
+            drawBoard();
+        } else {
+            playMove(data.r, data.c);
+        }
+    };
+}
+
 function initBoard() {
     board = [];
     for (let i = 0; i < n; i++) {
@@ -226,9 +246,7 @@ function initBoard() {
     }
 }
 
-// 绘制棋盘
 function drawBoard() {
-    // 使用 CSS 渲染的实际宽度，避免强制设置 inline style 造成的布局跳动和闪烁
     const rect = canvas.getBoundingClientRect();
     const maxSize = rect.width || Math.min(450, canvas.parentElement.clientWidth - 12);
     
@@ -269,7 +287,6 @@ function drawBoard() {
         for (let j = 0; j < n; j++) {
             if (board[i][j] === 0) continue;
             
-            // 如果这个棋子正在动画中，先跳过不画，最后单独画它
             if (currentAnimation && currentAnimation.x === i && currentAnimation.y === j) {
                 continue; 
             }
@@ -279,7 +296,6 @@ function drawBoard() {
         }
     }
     
-    // 绘制动画中的棋子
     if (currentAnimation) {
         let now = performance.now();
         let progress = (now - currentAnimation.start) / currentAnimation.duration;
@@ -306,6 +322,20 @@ function drawBoard() {
         }
     }
     
+    if (hintPos) {
+        let time = performance.now();
+        let pulse = (Math.sin(time / 200) + 1) / 2;
+        ctx.fillStyle = `rgba(46, 204, 113, ${0.3 + 0.4 * pulse})`;
+        ctx.beginPath();
+        ctx.arc(margin + hintPos.x * cellSize, margin + hintPos.y * cellSize, cellSize * 0.4, 0, 2*Math.PI);
+        ctx.fill();
+        ctx.strokeStyle = "#27ae60";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        requestAnimationFrame(drawBoard); 
+    }
+    
     if(historyMoves.length > 0) {
         let lastMove = historyMoves[historyMoves.length - 1];
         drawLastMoveMarker(lastMove.x, lastMove.y);
@@ -322,21 +352,19 @@ function drawChess(i, j, isBlack, animOpts = null) {
     let shadowOffsetX = 2.5;
     let shadowOffsetY = 3.5;
     let shadowAlpha = 0.5;
-    let shadowSpread = 1.35; // 阴影羽化范围
+    let shadowSpread = 1.35; 
 
     if (animOpts) {
         radius *= animOpts.scale;
         y += animOpts.offsetY; 
         
-        // 物理光影：棋子抬高时阴影偏移变大，羽化变大，变淡
-        let heightRatio = (animOpts.scale - 1) / 0.15; // 归一化到 0~1左右
+        let heightRatio = (animOpts.scale - 1) / 0.15; 
         shadowOffsetX += 4 * heightRatio;
         shadowOffsetY += 8 * heightRatio;
         shadowAlpha *= animOpts.shadowAlphaMult;
         shadowSpread += 0.5 * heightRatio;
     }
 
-    // 1. 极致柔和的放射状羽化阴影 (完美模拟全局光照)
     let shadowX = baseX + shadowOffsetX;
     let shadowY = baseY + shadowOffsetY;
     
@@ -348,32 +376,30 @@ function drawChess(i, j, isBlack, animOpts = null) {
     ctx.fillStyle = shadowGrad;
     ctx.fill();
 
-    // 2. 棋子本体 (立体厚重渐变)
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, 2 * Math.PI);
     
     const gradient = ctx.createRadialGradient(x - radius/3, y - radius/3, radius/5, x, y, radius);
     if (isBlack) {
-        gradient.addColorStop(0, '#666'); // 顶部高光点
-        gradient.addColorStop(0.3, '#222'); // 主色
-        gradient.addColorStop(0.8, '#0a0a0a'); // 边缘过渡
-        gradient.addColorStop(1, '#000'); // 纯黑收边
+        gradient.addColorStop(0, '#666'); 
+        gradient.addColorStop(0.3, '#222'); 
+        gradient.addColorStop(0.8, '#0a0a0a'); 
+        gradient.addColorStop(1, '#000'); 
     } else {
-        gradient.addColorStop(0, '#fff'); // 纯白高光点
-        gradient.addColorStop(0.4, '#f2f2f2'); // 主色
-        gradient.addColorStop(0.8, '#d8d8d8'); // 边缘过渡
-        gradient.addColorStop(1, '#b0b0b0'); // 暗灰收边，体积感拉满
+        gradient.addColorStop(0, '#fff'); 
+        gradient.addColorStop(0.4, '#f2f2f2'); 
+        gradient.addColorStop(0.8, '#d8d8d8'); 
+        gradient.addColorStop(1, '#b0b0b0'); 
     }
     
     ctx.fillStyle = gradient;
     ctx.fill();
     
-    // 3. 玻璃/玉石质感镜面高光 (椭圆形强反光)
     ctx.beginPath();
     if(ctx.ellipse) {
         ctx.ellipse(x - radius/3.5, y - radius/3.5, radius/2.5, radius/4.5, Math.PI / 4, 0, 2 * Math.PI);
     } else {
-        ctx.arc(x - radius/3.5, y - radius/3.5, radius/3, 0, 2 * Math.PI); // 兼容
+        ctx.arc(x - radius/3.5, y - radius/3.5, radius/3, 0, 2 * Math.PI); 
     }
     const highlight = ctx.createRadialGradient(x - radius/3.5, y - radius/3.5, 0, x - radius/3.5, y - radius/3.5, radius/2.5);
     if(isBlack) {
@@ -386,7 +412,6 @@ function drawChess(i, j, isBlack, animOpts = null) {
     ctx.fillStyle = highlight;
     ctx.fill();
     
-    // 4. 白子特有的底部环境反射光 (增加温润的玉石通透感)
     if (!isBlack) {
         ctx.beginPath();
         ctx.arc(x, y, radius * 0.98, 0, 2 * Math.PI);
@@ -407,7 +432,77 @@ function drawLastMoveMarker(i, j) {
     ctx.fill();
 }
 
-// 落子交互
+// 禁手判断辅助函数
+function getWinningSpots(line) {
+    let spots = [];
+    for(let i=0; i<line.length; i++) {
+        if (line[i] === '_') {
+            let temp = line.substring(0, i) + 'X' + line.substring(i+1);
+            if (temp.includes('XXXXX') && !temp.includes('XXXXXX')) {
+                spots.push(i);
+            }
+        }
+    }
+    return spots;
+}
+
+function isOpenThree(line) {
+    for(let i=0; i<line.length; i++) {
+        if (line[i] === '_') {
+            let temp = line.substring(0, i) + 'X' + line.substring(i+1);
+            let winSpots = getWinningSpots(temp);
+            if (winSpots.length >= 2) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+function checkForbidden(currentBoard, r, c) {
+    currentBoard[r][c] = 1; 
+    
+    let isFive = false;
+    let isOverline = false;
+    let fourSpots = new Set(); 
+    let openThreeCount = 0;
+    
+    const dirs = [[1,0], [0,1], [1,1], [1,-1]];
+    
+    for (let dir of dirs) {
+        let line = "";
+        let coords = [];
+        for(let i=-5; i<=5; i++) {
+            let nr = r + dir[0]*i;
+            let nc = c + dir[1]*i;
+            if(nr>=0 && nr<n && nc>=0 && nc<n) {
+                let piece = currentBoard[nr][nc];
+                line += piece === 0 ? '_' : (piece === 1 ? 'X' : 'O');
+            } else {
+                line += 'O';
+            }
+            coords.push(`${nr},${nc}`);
+        }
+        
+        if (line.includes('XXXXXX')) isOverline = true;
+        if (line.includes('XXXXX') && !line.includes('XXXXXX')) isFive = true;
+        
+        let lineFourSpots = getWinningSpots(line);
+        lineFourSpots.forEach(idx => fourSpots.add(coords[idx]));
+        
+        if (isOpenThree(line)) openThreeCount++;
+    }
+    
+    currentBoard[r][c] = 0; 
+    
+    if (isFive) return null; 
+    if (isOverline) return "长连禁手";
+    if (fourSpots.size >= 2) return "双四禁手";
+    if (openThreeCount >= 2) return "双三禁手";
+    
+    return null;
+}
+
 canvas.onclick = function (e) {
     if (over || isAILoading || currentAnimation) return;
     if (isPvE && !me) return; 
@@ -420,6 +515,20 @@ canvas.onclick = function (e) {
     const j = Math.floor((y - margin + cellSize/2) / cellSize);
 
     if (i >= 0 && i < n && j >= 0 && j < n && board[i][j] === 0) {
+        
+        if (me && chkForbidden && chkForbidden.checked) {
+            let forbiddenMsg = checkForbidden(board, i, j);
+            if (forbiddenMsg) {
+                statusDiv.innerText = `禁手：${forbiddenMsg}，不可落子`;
+                statusDiv.style.color = "#c0392b";
+                setTimeout(() => {
+                    if(!over) updateStatus();
+                }, 2000);
+                return; 
+            }
+        }
+        
+        hintPos = null;
         playMove(i, j);
     }
 };
@@ -435,16 +544,16 @@ function playMove(i, j) {
         y: j,
         role: role,
         start: performance.now(),
-        duration: 400 // 动画持续时间 400ms
+        duration: 400 
     };
-    drawBoard(); // 启动动画
+    drawBoard(); 
 
     if (checkWinDirect(i, j, role)) {
         setTimeout(() => {
             statusDiv.innerText = (me ? "黑子" : "白子") + " 胜利！";
             statusDiv.style.color = "#c0392b";
             over = true;
-        }, 400); // 等待动画完成
+        }, 400); 
         return;
     }
 
@@ -455,23 +564,14 @@ function playMove(i, j) {
         statusDiv.innerText = "AI思考中...";
         isAILoading = true;
         
-        // 增加短暂延迟，让玩家的落子动画先跑起来
         setTimeout(() => {
-            if(!aiWorker) {
-                const blob = new Blob([workerCode], {type: 'application/javascript'});
-                const workerUrl = URL.createObjectURL(blob);
-                aiWorker = new Worker(workerUrl);
-                aiWorker.onmessage = function(e) {
-                    isAILoading = false;
-                    const bestMove = e.data;
-                    playMove(bestMove.r, bestMove.c);
-                };
-            }
+            if(!aiWorker) initWorker();
             
             aiWorker.postMessage({
                 board: board,
                 depth: aiDepth,
-                aiRole: 2
+                aiRole: 2,
+                isHint: false
             });
         }, 50);
     }
@@ -501,15 +601,15 @@ function updateStatus() {
     statusDiv.style.textShadow = me ? "none" : "1px 1px 0px rgba(255,255,255,0.5)";
 }
 
-// 悔棋逻辑
 btnUndo.onclick = function() {
     if (historyMoves.length === 0 || (over && !isPvE) || isAILoading) return; 
     
     currentAnimation = null;
+    hintPos = null;
     if(over) over = false;
 
     if (isPvE) {
-        if(!me) return; // 电脑回合不允许悔棋
+        if(!me) return; 
         
         if(historyMoves.length < 2 && historyMoves.length > 0) {
             let move = historyMoves.pop();
@@ -533,6 +633,25 @@ btnUndo.onclick = function() {
     updateStatus();
     drawBoard();
 };
+
+if (btnHint) {
+    btnHint.onclick = function() {
+        if (over || isAILoading || currentAnimation) return;
+        if (isPvE && !me) return; 
+        
+        statusDiv.innerText = "AI计算提示中...";
+        isAILoading = true;
+        
+        if(!aiWorker) initWorker();
+        
+        aiWorker.postMessage({
+            board: board,
+            depth: aiDepth,
+            aiRole: me ? 1 : 2,
+            isHint: true
+        });
+    };
+}
 
 btnRestart.onclick = startGame;
 
@@ -568,6 +687,7 @@ function startGame() {
     isAILoading = false;
     currentAnimation = null;
     historyMoves = [];
+    hintPos = null;
     statusDiv.style.color = "#2c3e50";
     
     const checkedMode = document.querySelector('input[name="mode"]:checked');
