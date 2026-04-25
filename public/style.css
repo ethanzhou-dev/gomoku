@@ -14,7 +14,7 @@ html, body {
 }
 
 body {
-    font-family: '楷体', 'STKaiti', 'Microsoft YaHei', sans-serif;
+    font-family: "LXGW WenKai Lite", '楷体', 'STKaiti', 'Microsoft YaHei', sans-serif;
     background: #2c3e50;
     background-image: radial-gradient(circle, #44596e, #1a252f);
     color: #333;
@@ -167,25 +167,46 @@ canvas {
 
 /* 移动端适配 */
 @media (max-width: 480px) {
+    body {
+        padding: 0;
+    }
+
     .game-container {
-        border-width: 5px;
-        padding: 12px;
+        border-width: 0;
+        border-radius: 0;
+        padding: 10px 5px;
+        max-height: 100vh;
+        justify-content: space-around;
     }
     
+    .header {
+        margin-bottom: 5px;
+    }
+
     .header h1 {
         font-size: 22px;
+        margin-bottom: 4px;
     }
     
     .board-container {
-        padding: 6px;
+        padding: 4px;
+        margin-bottom: 10px;
+        border-width: 3px;
+        width: 100%;
+        max-width: 100vmin; /* 确保棋盘为正方形并且尽可能大 */
     }
     
     .controls {
-        gap: 8px;
+        gap: 6px;
     }
     
     .skeuo-btn {
-        padding: 8px 12px;
+        padding: 6px 10px;
         font-size: 14px;
+    }
+
+    .mode-selector, .difficulty-selector {
+        padding: 4px 8px;
+        gap: 8px;
     }
 }
