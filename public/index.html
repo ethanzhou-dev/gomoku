@@ -11,9 +11,25 @@
 
 <body>
     <div class="game-container">
-        <div class="header">
-            <h1>经典五子棋</h1>
-            <div class="status" id="status">黑子先手</div>
+        <div class="header" style="position: relative; width: 100%; display: flex; flex-direction: column; align-items: center; min-height: 70px;">
+            <div id="opponent-info" style="display: none; position: absolute; left: 0; top: 0; text-align: left; align-items: center; gap: 8px;">
+                 <div style="width: 45px; height: 45px; border-radius: 50%; border: 2px solid #4a2f18; background: #e6d0a7; display: flex; justify-content: center; align-items: center; font-size: 24px;">🤖</div>
+                 <div style="display: flex; flex-direction: column; justify-content: center;">
+                     <div id="opponent-name" style="font-weight: bold; font-size: 15px; color: #4a2f18; text-shadow: 1px 1px 0px rgba(255,255,255,0.6);">对手</div>
+                     <div id="opponent-stats" style="font-size: 12px; color: #5c3a21; font-weight: bold;">0局 0%胜</div>
+                 </div>
+            </div>
+            
+            <h1 style="margin: 0; z-index: 1;">经典五子棋</h1>
+            <div class="status" id="status" style="margin-top: 5px; z-index: 1;">黑子先手</div>
+
+            <div id="my-info" style="display: none; position: absolute; right: 0; top: 0; text-align: right; align-items: center; gap: 8px; flex-direction: row-reverse;">
+                 <div style="width: 45px; height: 45px; border-radius: 50%; border: 2px solid #4a2f18; background: #e6d0a7; display: flex; justify-content: center; align-items: center; font-size: 24px;">👤</div>
+                 <div style="display: flex; flex-direction: column; justify-content: center; align-items: flex-end;">
+                     <div id="my-name" style="font-weight: bold; font-size: 15px; color: #4a2f18; text-shadow: 1px 1px 0px rgba(255,255,255,0.6);">我</div>
+                     <div id="my-stats" style="font-size: 12px; color: #5c3a21; font-weight: bold;">0局 0%胜</div>
+                 </div>
+            </div>
         </div>
 
         <div class="board-container">

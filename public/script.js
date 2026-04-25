@@ -25,6 +25,29 @@ const modalAlert = document.getElementById('alert-modal');
 const alertMsg = document.getElementById('alert-msg');
 const btnAlertOk = document.getElementById('btn-alert-ok');
 const alertTitle = document.getElementById('alert-title');
+const opponentInfo = document.getElementById('opponent-info');
+const opponentNameElem = document.getElementById('opponent-name');
+const opponentStatsElem = document.getElementById('opponent-stats');
+const myInfo = document.getElementById('my-info');
+const myNameElem = document.getElementById('my-name');
+const myStatsElem = document.getElementById('my-stats');
+
+function updateMyStats(isWin, isDraw) {
+    let statsStr = localStorage.getItem('gomoku_stats');
+    let stats = statsStr ? JSON.parse(statsStr) : { total: 0, win: 0 };
+    if (!isDraw) {
+        stats.total += 1;
+        if (isWin) stats.win += 1;
+    }
+    localStorage.setItem('gomoku_stats', JSON.stringify(stats));
+    return stats;
+}
+
+function getMyStats() {
+    let statsStr = localStorage.getItem('gomoku_stats');
+    return statsStr ? JSON.parse(statsStr) : { total: 0, win: 0 };
+}
+
 
 function showAlert(msg, title = "提示") {
     if(alertTitle) alertTitle.innerText = title;
@@ -823,7 +846,10 @@ function updateStatus() {
 btnUndo.onclick = function() {
     if (historyMoves.length === 0 || (over && !isPvE && !isOnline) || isAILoading) return;
     if (isOnline) {
-        showAlert('联机模式不支持悔棋');
+        if(socket && currentRoomId && !over) {
+            socket.emit('undoRequest', currentRoomId);
+            showAlert('已发送悔棋请求，等待对方同意...');
+        }
         return;
     } 
     
@@ -859,12 +885,15 @@ btnUndo.onclick = function() {
 
 if (btnHint) {
     btnHint.onclick = function() {
-        if (over || isAILoading || currentAnimation || historyMoves.length === 0) return;
+        if (over || isAILoading || currentAnimation) return;
         if (isOnline) {
-            showAlert('联机模式不支持提示');
+            if(socket && currentRoomId) {
+                socket.emit('drawRequest', currentRoomId);
+                showAlert('已发送和棋请求，等待对方同意...');
+            }
             return;
         }
-        if (isPvE && !me) return; 
+        if (historyMoves.length === 0 || (isPvE && !me)) return;
         
         isAILoading = true;
 
@@ -880,7 +909,19 @@ if (btnHint) {
         }, 250);    };
 }
 
-btnRestart.onclick = startGame;
+btnRestart.onclick = () => {
+    if(isOnline && currentRoomId) {
+        if(confirm("确定要退出房间吗？")) {
+            socket.emit('leaveRoom', currentRoomId);
+            currentRoomId = null;
+            if(opponentInfo) opponentInfo.style.display = 'none';
+            if(myInfo) myInfo.style.display = 'none';
+            if(modalRoomList) modalRoomList.style.display = 'flex';
+        }
+    } else {
+        startGame();
+    }
+};
 
 chkForbidden.addEventListener('change', saveSettings);
 
@@ -928,6 +969,12 @@ window.addEventListener('resize', () => {
 });
 
 function startGame() {
+    if (!isOnline) {
+        if(opponentInfo) opponentInfo.style.display = 'none';
+        if(myInfo) myInfo.style.display = 'none';
+        if(btnRestart) btnRestart.innerText = "重新开始";
+        if(btnHint) btnHint.innerText = "提示";
+    }
     if(aiWorker) {
         aiWorker.terminate();
         aiWorker = null;
@@ -1003,7 +1050,7 @@ function connectSocket(nickname) {
         socket = io();
         setupSocketEvents();
     }
-    socket.emit('setNickname', nickname);
+    socket.emit('setNickname', { name: nickname, stats: getMyStats() });
     if(currentNicknameSpan) currentNicknameSpan.innerText = nickname;
     if(modalRoomList) modalRoomList.style.display = 'flex';
 }
@@ -1073,6 +1120,8 @@ function setupSocketEvents() {
                 currentRoomId = null;
                 myRole = null;
                 if(modalAlert) modalAlert.style.display = 'none';
+                if(opponentInfo) opponentInfo.style.display = 'none';
+                if(myInfo) myInfo.style.display = 'none';
                 if(modalRoomList) modalRoomList.style.display = 'flex';
             }, 2000);
         }
