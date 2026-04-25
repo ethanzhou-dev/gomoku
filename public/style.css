@@ -6,6 +6,11 @@
     -webkit-tap-highlight-color: transparent;
 }
 
+@font-face {
+    font-family: 'LocalKaiti';
+    src: url('simkai.ttf') format('truetype');
+}
+
 html, body {
     height: 100%;
     margin: 0;
@@ -14,7 +19,7 @@ html, body {
 }
 
 body {
-    font-family: "LXGW WenKai Lite", '楷体', 'STKaiti', 'Microsoft YaHei', sans-serif;
+    font-family: 'LocalKaiti', '楷体', 'STKaiti', 'Microsoft YaHei', sans-serif;
     background: #2c3e50;
     background-image: radial-gradient(circle, #44596e, #1a252f);
     color: #333;
