@@ -319,55 +319,84 @@ function drawChess(i, j, isBlack, animOpts = null) {
     let radius = cellSize / 2 * 0.85;
     let x = baseX;
     let y = baseY;
-    let shadowOffsetX = 2;
-    let shadowOffsetY = 2;
-    let shadowAlpha = 0.4;
+    
+    let shadowOffsetX = 2.5;
+    let shadowOffsetY = 3.5;
+    let shadowAlpha = 0.5;
+    let shadowSpread = 1.35; // 阴影羽化范围
 
     if (animOpts) {
         radius *= animOpts.scale;
         y += animOpts.offsetY; 
-        shadowOffsetX = animOpts.shadowOffset;
-        shadowOffsetY = animOpts.shadowOffset; // 修正阴影Y轴
+        
+        // 物理光影：棋子抬高时阴影偏移变大，羽化变大，变淡
+        let heightRatio = (animOpts.scale - 1) / 0.15; // 归一化到 0~1左右
+        shadowOffsetX += 4 * heightRatio;
+        shadowOffsetY += 8 * heightRatio;
         shadowAlpha *= animOpts.shadowAlphaMult;
+        shadowSpread += 0.5 * heightRatio;
     }
 
-    // 绘制阴影
+    // 1. 极致柔和的放射状羽化阴影 (完美模拟全局光照)
+    let shadowX = baseX + shadowOffsetX;
+    let shadowY = baseY + shadowOffsetY;
+    
     ctx.beginPath();
-    ctx.arc(baseX + shadowOffsetX, baseY + shadowOffsetY, radius, 0, 2 * Math.PI);
-    ctx.fillStyle = `rgba(0, 0, 0, ${shadowAlpha})`;
+    ctx.arc(shadowX, shadowY, radius * shadowSpread, 0, 2 * Math.PI);
+    const shadowGrad = ctx.createRadialGradient(shadowX, shadowY, radius * 0.3, shadowX, shadowY, radius * shadowSpread);
+    shadowGrad.addColorStop(0, `rgba(0, 0, 0, ${shadowAlpha})`);
+    shadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = shadowGrad;
     ctx.fill();
 
-    // 绘制棋子本体
+    // 2. 棋子本体 (立体厚重渐变)
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, 2 * Math.PI);
     
-    const gradient = ctx.createRadialGradient(x - radius/3, y - radius/3, radius/6, x, y, radius);
+    const gradient = ctx.createRadialGradient(x - radius/3, y - radius/3, radius/5, x, y, radius);
     if (isBlack) {
-        gradient.addColorStop(0, '#555');
-        gradient.addColorStop(0.3, '#222');
-        gradient.addColorStop(1, '#050505');
+        gradient.addColorStop(0, '#666'); // 顶部高光点
+        gradient.addColorStop(0.3, '#222'); // 主色
+        gradient.addColorStop(0.8, '#0a0a0a'); // 边缘过渡
+        gradient.addColorStop(1, '#000'); // 纯黑收边
     } else {
-        gradient.addColorStop(0, '#fff');
-        gradient.addColorStop(0.5, '#eee');
-        gradient.addColorStop(1, '#ccc');
+        gradient.addColorStop(0, '#fff'); // 纯白高光点
+        gradient.addColorStop(0.4, '#f2f2f2'); // 主色
+        gradient.addColorStop(0.8, '#d8d8d8'); // 边缘过渡
+        gradient.addColorStop(1, '#b0b0b0'); // 暗灰收边，体积感拉满
     }
     
     ctx.fillStyle = gradient;
     ctx.fill();
     
-    // 绘制高光
+    // 3. 玻璃/玉石质感镜面高光 (椭圆形强反光)
     ctx.beginPath();
-    ctx.arc(x - radius/3, y - radius/3, radius/4, 0, 2 * Math.PI);
-    const highlight = ctx.createRadialGradient(x - radius/3, y - radius/3, 0, x - radius/3, y - radius/3, radius/4);
-    if(isBlack) {
-        highlight.addColorStop(0, 'rgba(255,255,255,0.3)');
-        highlight.addColorStop(1, 'rgba(255,255,255,0)');
+    if(ctx.ellipse) {
+        ctx.ellipse(x - radius/3.5, y - radius/3.5, radius/2.5, radius/4.5, Math.PI / 4, 0, 2 * Math.PI);
     } else {
-        highlight.addColorStop(0, 'rgba(255,255,255,0.8)');
-        highlight.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.arc(x - radius/3.5, y - radius/3.5, radius/3, 0, 2 * Math.PI); // 兼容
+    }
+    const highlight = ctx.createRadialGradient(x - radius/3.5, y - radius/3.5, 0, x - radius/3.5, y - radius/3.5, radius/2.5);
+    if(isBlack) {
+        highlight.addColorStop(0, 'rgba(255, 255, 255, 0.35)');
+        highlight.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    } else {
+        highlight.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+        highlight.addColorStop(1, 'rgba(255, 255, 255, 0)');
     }
     ctx.fillStyle = highlight;
     ctx.fill();
+    
+    // 4. 白子特有的底部环境反射光 (增加温润的玉石通透感)
+    if (!isBlack) {
+        ctx.beginPath();
+        ctx.arc(x, y, radius * 0.98, 0, 2 * Math.PI);
+        const bottomReflect = ctx.createRadialGradient(x + radius/2.5, y + radius/2.5, 0, x, y, radius);
+        bottomReflect.addColorStop(0, 'rgba(255, 255, 255, 0.6)');
+        bottomReflect.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = bottomReflect;
+        ctx.fill();
+    }
 }
 
 function drawLastMoveMarker(i, j) {
