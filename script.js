@@ -207,6 +207,14 @@ let aiDepth = 4; // 默认难度普通 (深度4)
 let isAILoading = false; // AI计算中锁定棋盘
 let aiWorker = null; // Web Worker
 
+// 动效状态
+let currentAnimation = null; 
+
+// 物理缓动函数（优雅的缓出）
+function easeOutQuint(x) {
+    return 1 - Math.pow(1 - x, 5);
+}
+
 // 初始化棋盘数据
 function initBoard() {
     board = [];
@@ -260,8 +268,42 @@ function drawBoard() {
 
     for (let i = 0; i < n; i++) {
         for (let j = 0; j < n; j++) {
+            if (board[i][j] === 0) continue;
+            
+            // 如果这个棋子正在动画中，先跳过不画，最后单独画它
+            if (currentAnimation && currentAnimation.x === i && currentAnimation.y === j) {
+                continue; 
+            }
+            
             if (board[i][j] === 1) drawChess(i, j, true);
             else if (board[i][j] === 2) drawChess(i, j, false);
+        }
+    }
+    
+    // 绘制动画中的棋子
+    if (currentAnimation) {
+        let now = performance.now();
+        let progress = (now - currentAnimation.start) / currentAnimation.duration;
+        
+        if (progress >= 1) {
+            drawChess(currentAnimation.x, currentAnimation.y, currentAnimation.role === 1);
+            currentAnimation = null;
+        } else {
+            let ease = easeOutQuint(progress);
+            let animOpts = {
+                offsetY: -30 * (1 - ease),
+                scale: 1 + 0.15 * (1 - ease),
+                shadowOffset: 2 + 8 * (1 - ease),
+                shadowAlphaMult: 0.5 + 0.5 * ease,
+                globalAlpha: ease
+            };
+            
+            ctx.save();
+            ctx.globalAlpha = animOpts.globalAlpha;
+            drawChess(currentAnimation.x, currentAnimation.y, currentAnimation.role === 1, animOpts);
+            ctx.restore();
+            
+            requestAnimationFrame(drawBoard);
         }
     }
     
@@ -271,16 +313,31 @@ function drawBoard() {
     }
 }
 
-function drawChess(i, j, isBlack) {
-    const x = margin + i * cellSize;
-    const y = margin + j * cellSize;
-    const radius = cellSize / 2 * 0.85;
+function drawChess(i, j, isBlack, animOpts = null) {
+    const baseX = margin + i * cellSize;
+    const baseY = margin + j * cellSize;
+    let radius = cellSize / 2 * 0.85;
+    let x = baseX;
+    let y = baseY;
+    let shadowOffsetX = 2;
+    let shadowOffsetY = 2;
+    let shadowAlpha = 0.4;
 
+    if (animOpts) {
+        radius *= animOpts.scale;
+        y += animOpts.offsetY; 
+        shadowOffsetX = animOpts.shadowOffset;
+        shadowOffsetY = animOpts.shadowOffset; // 修正阴影Y轴
+        shadowAlpha *= animOpts.shadowAlphaMult;
+    }
+
+    // 绘制阴影
     ctx.beginPath();
-    ctx.arc(x + 2, y + 2, radius, 0, 2 * Math.PI);
-    ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+    ctx.arc(baseX + shadowOffsetX, baseY + shadowOffsetY, radius, 0, 2 * Math.PI);
+    ctx.fillStyle = `rgba(0, 0, 0, ${shadowAlpha})`;
     ctx.fill();
 
+    // 绘制棋子本体
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, 2 * Math.PI);
     
@@ -298,6 +355,7 @@ function drawChess(i, j, isBlack) {
     ctx.fillStyle = gradient;
     ctx.fill();
     
+    // 绘制高光
     ctx.beginPath();
     ctx.arc(x - radius/3, y - radius/3, radius/4, 0, 2 * Math.PI);
     const highlight = ctx.createRadialGradient(x - radius/3, y - radius/3, 0, x - radius/3, y - radius/3, radius/4);
@@ -323,7 +381,7 @@ function drawLastMoveMarker(i, j) {
 
 // 落子交互
 canvas.onclick = function (e) {
-    if (over || isAILoading) return;
+    if (over || isAILoading || currentAnimation) return;
     if (isPvE && !me) return; 
 
     const rect = canvas.getBoundingClientRect();
@@ -343,12 +401,22 @@ function playMove(i, j) {
     board[i][j] = role;
     
     historyMoves.push({x: i, y: j, role: role});
-    drawBoard();
+    
+    currentAnimation = {
+        x: i,
+        y: j,
+        role: role,
+        start: performance.now(),
+        duration: 400 // 动画持续时间 400ms
+    };
+    drawBoard(); // 启动动画
 
     if (checkWinDirect(i, j, role)) {
-        statusDiv.innerText = (me ? "黑子" : "白子") + " 胜利！";
-        statusDiv.style.color = "#c0392b";
-        over = true;
+        setTimeout(() => {
+            statusDiv.innerText = (me ? "黑子" : "白子") + " 胜利！";
+            statusDiv.style.color = "#c0392b";
+            over = true;
+        }, 400); // 等待动画完成
         return;
     }
 
@@ -359,28 +427,28 @@ function playMove(i, j) {
         statusDiv.innerText = "专业AI思考中...";
         isAILoading = true;
         
-        // 使用 Web Worker 进行多线程计算，防止 UI 卡顿
-        if(!aiWorker) {
-            const blob = new Blob([workerCode], {type: 'application/javascript'});
-            const workerUrl = URL.createObjectURL(blob);
-            aiWorker = new Worker(workerUrl);
-            aiWorker.onmessage = function(e) {
-                isAILoading = false;
-                const bestMove = e.data;
-                playMove(bestMove.r, bestMove.c);
-            };
-        }
-        
-        // 传递当前棋盘状态给 Worker
-        aiWorker.postMessage({
-            board: board,
-            depth: aiDepth,
-            aiRole: 2
-        });
+        // 增加短暂延迟，让玩家的落子动画先跑起来
+        setTimeout(() => {
+            if(!aiWorker) {
+                const blob = new Blob([workerCode], {type: 'application/javascript'});
+                const workerUrl = URL.createObjectURL(blob);
+                aiWorker = new Worker(workerUrl);
+                aiWorker.onmessage = function(e) {
+                    isAILoading = false;
+                    const bestMove = e.data;
+                    playMove(bestMove.r, bestMove.c);
+                };
+            }
+            
+            aiWorker.postMessage({
+                board: board,
+                depth: aiDepth,
+                aiRole: 2
+            });
+        }, 50);
     }
 }
 
-// 直接基于当前落子点扫描判断胜负
 function checkWinDirect(r, c, role) {
     const dirs = [[1,0], [0,1], [1,1], [1,-1]];
     for (let dir of dirs) {
@@ -408,6 +476,7 @@ function updateStatus() {
 btnUndo.onclick = function() {
     if (historyMoves.length === 0 || (over && !isPvE) || isAILoading) return; 
     
+    currentAnimation = null;
     if(over) over = false;
 
     if (isPvE) {
@@ -459,7 +528,6 @@ window.addEventListener('resize', () => {
 });
 
 function startGame() {
-    // 终止之前的AI计算
     if(aiWorker) {
         aiWorker.terminate();
         aiWorker = null;
@@ -469,6 +537,7 @@ function startGame() {
     me = true;
     over = false;
     isAILoading = false;
+    currentAnimation = null;
     historyMoves = [];
     statusDiv.style.color = "#2c3e50";
     
