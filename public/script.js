@@ -209,7 +209,7 @@ let over = false;
 let historyMoves = [];
 let hintPos = null;
 
-let isPvE = false;
+let isPvE = true;
 let aiDepth = 4;
 let isAILoading = false; 
 let aiWorker = null; 
