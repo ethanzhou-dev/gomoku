@@ -693,6 +693,15 @@ function playMove(i, j) {
         return;
     }
 
+    if (historyMoves.length === n * n) {
+        setTimeout(() => {
+            statusDiv.innerText = "平局！";
+            statusDiv.style.color = "#8e44ad";
+            over = true;
+        }, 400);
+        return;
+    }
+
     me = !me;
     updateStatus();
 
