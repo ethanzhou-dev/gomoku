@@ -227,7 +227,7 @@ function initWorker() {
         const data = e.data;
         
         if (data.isHint) {
-            hintPos = { x: data.r, y: data.c };
+            hintPos = { x: data.r, y: data.c, start: performance.now() };
             updateStatus();
             drawBoard();
         } else {
@@ -355,14 +355,43 @@ function drawBoard() {
     
     if (hintPos) {
         let time = performance.now();
-        let pulse = (Math.sin(time / 200) + 1) / 2;
-        ctx.fillStyle = `rgba(46, 204, 113, ${0.3 + 0.4 * pulse})`;
+        let elapsed = time - hintPos.start;
+        let entranceDuration = 400; // 400ms出现动画
+        let entranceProgress = Math.min(elapsed / entranceDuration, 1);
+        let ease = easeOutQuint(entranceProgress);
+
+        let pulse = (Math.sin(time / 200) + 1) / 2; // 0 ~ 1 呼吸变化
+        
+        let cx = margin + hintPos.x * cellSize;
+        let cy = margin + hintPos.y * cellSize;
+        
+        ctx.save();
+        
+        // 1. 底部呼吸发光的金色聚光灯效果，伴随出现动画渐现
+        let glowRadius = cellSize * ease;
+        let glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowRadius);
+        glow.addColorStop(0, `rgba(243, 156, 18, ${(0.3 + 0.3 * pulse) * ease})`); 
+        glow.addColorStop(1, 'rgba(243, 156, 18, 0)');
+        ctx.fillStyle = glow;
         ctx.beginPath();
-        ctx.arc(margin + hintPos.x * cellSize, margin + hintPos.y * cellSize, cellSize * 0.4, 0, 2*Math.PI);
+        ctx.arc(cx, cy, glowRadius, 0, 2*Math.PI);
         ctx.fill();
-        ctx.strokeStyle = "#27ae60";
-        ctx.lineWidth = 2;
-        ctx.stroke();
+
+        // 2. 绘制拟物的“幻影”悬浮棋子
+        // 结合渐现透明度 (ease) 和呼吸透明度 (pulse)
+        ctx.globalAlpha = (0.5 + 0.3 * pulse) * ease; 
+        
+        let animOpts = {
+            // 从高处(-30)落下到悬浮位置(-8)，并伴随呼吸浮动
+            offsetY: -30 * (1 - ease) + (-8 + 3 * pulse) * ease, 
+            // 刚出现时较大(1.15)，稳定后缩小到悬浮大小(1.08)
+            scale: 1 + 0.15 * (1 - ease) + 0.08 * ease,             
+            // 阴影也随之渐现
+            shadowAlphaMult: 0.3 * ease     
+        };
+        drawChess(hintPos.x, hintPos.y, me, animOpts);
+        
+        ctx.restore();
         
         requestAnimationFrame(drawBoard); 
     }
@@ -604,7 +633,7 @@ function playMove(i, j) {
                 aiRole: 2,
                 isHint: false
             });
-        }, 50);
+        }, 250);
     }
 }
 
@@ -670,18 +699,18 @@ if (btnHint) {
         if (over || isAILoading || currentAnimation) return;
         if (isPvE && !me) return; 
         
-        statusDiv.innerText = "AI计算提示中...";
         isAILoading = true;
-        
-        if(!aiWorker) initWorker();
-        
-        aiWorker.postMessage({
-            board: board,
-            depth: aiDepth,
-            aiRole: me ? 1 : 2,
-            isHint: true
-        });
-    };
+
+        setTimeout(() => {
+            if(!aiWorker) initWorker();
+
+            aiWorker.postMessage({
+                board: board,
+                depth: aiDepth,
+                aiRole: me ? 1 : 2,
+                isHint: true
+            });
+        }, 250);    };
 }
 
 btnRestart.onclick = startGame;
