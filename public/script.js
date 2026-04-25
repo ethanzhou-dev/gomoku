@@ -773,13 +773,8 @@ function playMove(i, j) {
             statusDiv.innerText = '你输了！';
         }
         setTimeout(() => {
-             showAlert(statusDiv.innerText + ' 点击确定返回大厅');
-             btnAlertOk.onclick = () => {
-                 modalAlert.style.display = 'none';
-                 if (socket && currentRoomId) socket.emit('leaveRoom', currentRoomId);
-                 currentRoomId = null;
-                 modalRoomList.style.display = 'flex';
-             };
+             showAlert(statusDiv.innerText);
+             if(btnRestart) btnRestart.innerText = "再来一局";
         }, 1500);
     } else {
         statusDiv.innerText = (me ? "黑子" : "白子") + " 胜利！";
@@ -795,6 +790,9 @@ function playMove(i, j) {
             statusDiv.innerText = "平局！";
             statusDiv.style.color = "#8e44ad";
             over = true;
+            if(isOnline && btnRestart) {
+                btnRestart.innerText = "再来一局";
+            }
         }, 400);
         return;
     }
@@ -846,7 +844,7 @@ function updateStatus() {
 btnUndo.onclick = function() {
     if (historyMoves.length === 0 || (over && !isPvE && !isOnline) || isAILoading) return;
     if (isOnline) {
-        if(socket && currentRoomId && !over) {
+        if(socket && currentRoomId) {
             socket.emit('undoRequest', currentRoomId);
             showAlert('已发送悔棋请求，等待对方同意...');
         }
@@ -911,12 +909,18 @@ if (btnHint) {
 
 btnRestart.onclick = () => {
     if(isOnline && currentRoomId) {
-        if(confirm("确定要退出房间吗？")) {
-            socket.emit('leaveRoom', currentRoomId);
-            currentRoomId = null;
-            if(opponentInfo) opponentInfo.style.display = 'none';
-            if(myInfo) myInfo.style.display = 'none';
-            if(modalRoomList) modalRoomList.style.display = 'flex';
+        if(over) {
+            socket.emit('rematchRequest', currentRoomId);
+            showAlert('已发送再来一局请求，等待对方同意...');
+        } else {
+            if(confirm("确定要退出房间吗？")) {
+                socket.emit('leaveRoom', currentRoomId);
+                currentRoomId = null;
+                if(opponentInfo) opponentInfo.style.display = 'none';
+                if(myInfo) myInfo.style.display = 'none';
+                if(modalRoomList) modalRoomList.style.display = 'flex';
+                startGame();
+            }
         }
     } else {
         startGame();
@@ -1152,6 +1156,9 @@ function setupSocketEvents() {
                 nextTurnRole = historyMoves.length % 2 === 0 ? 1 : 2;
                 me = (myRole === nextTurnRole);
                 
+                if (over) over = false;
+                if (isOnline && btnRestart) btnRestart.innerText = "退出房间";
+                
                 updateStatus();
                 drawBoard();
             }
@@ -1177,6 +1184,9 @@ function setupSocketEvents() {
                 nextTurnRole = historyMoves.length % 2 === 0 ? 1 : 2;
                 me = (myRole === nextTurnRole);
                 
+                if (over) over = false;
+                if (isOnline && btnRestart) btnRestart.innerText = "退出房间";
+                
                 updateStatus();
                 drawBoard();
             }
@@ -1192,6 +1202,7 @@ function setupSocketEvents() {
             statusDiv.innerText = "双方和棋！";
             statusDiv.style.color = "#8e44ad";
             statusDiv.style.textShadow = "none";
+            if (isOnline && btnRestart) btnRestart.innerText = "再来一局";
             updateMyStats(false, true);
         } else {
             socket.emit('drawResponse', { roomId: currentRoomId, agreed: false });
@@ -1205,9 +1216,28 @@ function setupSocketEvents() {
             statusDiv.innerText = "双方和棋！";
             statusDiv.style.color = "#8e44ad";
             statusDiv.style.textShadow = "none";
+            if (isOnline && btnRestart) btnRestart.innerText = "再来一局";
             updateMyStats(false, true);
         } else {
             showAlert('对方拒绝了您的和棋请求。');
+        }
+    });
+
+    socket.on('rematchRequested', () => {
+        if (confirm("对方请求再来一局，是否同意？")) {
+            socket.emit('rematchResponse', { roomId: currentRoomId, agreed: true });
+            startGame();
+        } else {
+            socket.emit('rematchResponse', { roomId: currentRoomId, agreed: false });
+        }
+    });
+
+    socket.on('rematchResult', (agreed) => {
+        if (agreed) {
+            showAlert('对方同意再来一局！');
+            startGame();
+        } else {
+            showAlert('对方拒绝了再来一局的请求。');
         }
     });
 }
