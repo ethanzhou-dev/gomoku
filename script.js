@@ -367,14 +367,21 @@ function drawBoard() {
         
         ctx.save();
         
-        // 1. 底部呼吸发光的金色聚光灯效果，伴随出现动画渐现
-        let glowRadius = cellSize * ease;
+        // 1. 底部呼吸发光的金色聚光灯效果，稍微扩大光晕范围并增强亮度
+        let glowRadius = cellSize * 1.2 * ease; 
         let glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowRadius);
-        glow.addColorStop(0, `rgba(243, 156, 18, ${(0.3 + 0.3 * pulse) * ease})`); 
+        glow.addColorStop(0, `rgba(243, 156, 18, ${(0.6 + 0.4 * pulse) * ease})`); // 更强的琥珀金中心
+        glow.addColorStop(0.4, `rgba(243, 156, 18, ${(0.2 + 0.2 * pulse) * ease})`); 
         glow.addColorStop(1, 'rgba(243, 156, 18, 0)');
         ctx.fillStyle = glow;
         ctx.beginPath();
         ctx.arc(cx, cy, glowRadius, 0, 2*Math.PI);
+        ctx.fill();
+
+        // 绘制一个确切的落点指示（小实心圆点），以明确指示正下方哪一格
+        ctx.fillStyle = `rgba(255, 200, 50, ${(0.8 + 0.2 * pulse) * ease})`; // 明亮的金黄色核心
+        ctx.beginPath();
+        ctx.arc(cx, cy, cellSize * 0.15 * ease, 0, 2*Math.PI);
         ctx.fill();
 
         // 2. 绘制拟物的“幻影”悬浮棋子
@@ -386,8 +393,8 @@ function drawBoard() {
             offsetY: -30 * (1 - ease) + (-8 + 3 * pulse) * ease, 
             // 刚出现时较大(1.15)，稳定后缩小到悬浮大小(1.08)
             scale: 1 + 0.15 * (1 - ease) + 0.08 * ease,             
-            // 阴影也随之渐现
-            shadowAlphaMult: 0.3 * ease     
+            // 阴影随之渐现，并显著加深阴影以增强立体感与定位感
+            shadowAlphaMult: 0.8 * ease     
         };
         drawChess(hintPos.x, hintPos.y, me, animOpts);
         
@@ -696,7 +703,7 @@ btnUndo.onclick = function() {
 
 if (btnHint) {
     btnHint.onclick = function() {
-        if (over || isAILoading || currentAnimation) return;
+        if (over || isAILoading || currentAnimation || historyMoves.length === 0) return;
         if (isPvE && !me) return; 
         
         isAILoading = true;
