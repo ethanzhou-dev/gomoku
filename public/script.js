@@ -916,9 +916,18 @@ btnRestart.onclick = () => {
             if(confirm("确定要退出房间吗？")) {
                 socket.emit('leaveRoom', currentRoomId);
                 currentRoomId = null;
+                
+                isOnline = false;
+                if (socket) { socket.disconnect(); socket = null; }
+                const pveRadio = document.querySelector('input[name="mode"][value="pve"]');
+                if(pveRadio) pveRadio.checked = true;
+                const localRadio = document.querySelector('input[name="pvpType"][value="local"]');
+                if(localRadio) localRadio.checked = true;
+                saveSettings();
+
                 if(opponentInfo) opponentInfo.style.display = 'none';
                 if(myInfo) myInfo.style.display = 'none';
-                if(modalRoomList) modalRoomList.style.display = 'flex';
+                if(modalRoomList) modalRoomList.style.display = 'none';
                 startGame();
             }
         }
@@ -978,9 +987,11 @@ function startGame() {
         if(myInfo) myInfo.style.display = 'none';
         if(btnRestart) btnRestart.innerText = "重新开始";
         if(btnHint) btnHint.innerText = "提示";
+        if(btnSettings) btnSettings.style.display = 'inline-block';
     } else {
         if(btnRestart) btnRestart.innerText = "退出房间";
         if(btnHint) btnHint.innerText = "和棋";
+        if(btnSettings) btnSettings.style.display = 'none';
     }
     if(aiWorker) {
         aiWorker.terminate();
@@ -1261,6 +1272,10 @@ if(btnLeaveRooms) btnLeaveRooms.onclick = () => {
     if(modalRoomList) modalRoomList.style.display = 'none';
     isOnline = false;
     if (socket) { socket.disconnect(); socket = null; }
+    
+    const pveRadio = document.querySelector('input[name="mode"][value="pve"]');
+    if(pveRadio) pveRadio.checked = true;
+    
     const localRadio = document.querySelector('input[name="pvpType"][value="local"]');
     if(localRadio) localRadio.checked = true;
     saveSettings();
@@ -1272,6 +1287,15 @@ if(btnLeaveWaiting) btnLeaveWaiting.onclick = () => {
         socket.emit('leaveRoom', currentRoomId);
         currentRoomId = null;
     }
+    isOnline = false;
+    if (socket) { socket.disconnect(); socket = null; }
+    const pveRadio = document.querySelector('input[name="mode"][value="pve"]');
+    if(pveRadio) pveRadio.checked = true;
+    const localRadio = document.querySelector('input[name="pvpType"][value="local"]');
+    if(localRadio) localRadio.checked = true;
+    saveSettings();
+
     if(modalWaiting) modalWaiting.style.display = 'none';
-    if(modalRoomList) modalRoomList.style.display = 'flex';
+    if(modalRoomList) modalRoomList.style.display = 'none';
+    startGame();
 };
