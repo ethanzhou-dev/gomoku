@@ -249,6 +249,7 @@ const statusDiv = document.getElementById('status');
 const btnRestart = document.getElementById('btn-restart');
 const btnUndo = document.getElementById('btn-undo');
 const btnHint = document.getElementById('btn-hint');
+const btnHome = document.getElementById('btn-home');
 const btnSettings = document.getElementById('btn-settings');
 const modalSettings = document.getElementById('settings-modal');
 const btnCloseSettings = document.getElementById('btn-close-settings');
@@ -775,6 +776,7 @@ function playMove(i, j) {
         setTimeout(() => {
              showAlert(statusDiv.innerText);
              if(btnRestart) btnRestart.innerText = "再来一局";
+             if(isOnline) updateOnlineGameOverUI();
         }, 1500);
     } else {
         statusDiv.innerText = (me ? "黑子" : "白子") + " 胜利！";
@@ -792,6 +794,7 @@ function playMove(i, j) {
             over = true;
             if(isOnline && btnRestart) {
                 btnRestart.innerText = "再来一局";
+                updateOnlineGameOverUI();
             }
         }, 400);
         return;
@@ -845,6 +848,42 @@ function updateStatus() {
     }
     statusDiv.style.color = me ? "#2c3e50" : "#c0392b";
     statusDiv.style.textShadow = me ? "none" : "1px 1px 0px rgba(255,255,255,0.5)";
+}
+
+function leaveOnlineGame() {
+    if (socket && currentRoomId) {
+        socket.emit('leaveRoom', currentRoomId);
+        currentRoomId = null;
+    }
+    isOnline = false;
+    if (socket) { socket.disconnect(); socket = null; }
+    
+    const pveRadio = document.querySelector('input[name="mode"][value="pve"]');
+    if(pveRadio) pveRadio.checked = true;
+    
+    const localRadio = document.querySelector('input[name="pvpType"][value="local"]');
+    if(localRadio) localRadio.checked = true;
+    saveSettings();
+
+    if(opponentInfo) opponentInfo.style.display = 'none';
+    if(myInfo) myInfo.style.display = 'none';
+    if(modalRoomList) modalRoomList.style.display = 'none';
+    if(modalWaiting) modalWaiting.style.display = 'none';
+    startGame();
+}
+
+function updateOnlineGameOverUI() {
+    if (!isOnline) return;
+    if (btnRestart) btnRestart.innerText = "再来一局";
+    if (btnUndo) btnUndo.style.display = 'none';
+    if (btnHint) btnHint.style.display = 'none';
+    if (btnHome) btnHome.style.display = 'inline-block';
+}
+
+if (btnHome) {
+    btnHome.onclick = () => {
+        leaveOnlineGame();
+    };
 }
 
 btnUndo.onclick = function() {
@@ -914,21 +953,7 @@ btnRestart.onclick = () => {
             showAlert('已发送再来一局请求，等待对方同意...');
         } else {
             if(confirm("确定要退出房间吗？")) {
-                socket.emit('leaveRoom', currentRoomId);
-                currentRoomId = null;
-                
-                isOnline = false;
-                if (socket) { socket.disconnect(); socket = null; }
-                const pveRadio = document.querySelector('input[name="mode"][value="pve"]');
-                if(pveRadio) pveRadio.checked = true;
-                const localRadio = document.querySelector('input[name="pvpType"][value="local"]');
-                if(localRadio) localRadio.checked = true;
-                saveSettings();
-
-                if(opponentInfo) opponentInfo.style.display = 'none';
-                if(myInfo) myInfo.style.display = 'none';
-                if(modalRoomList) modalRoomList.style.display = 'none';
-                startGame();
+                leaveOnlineGame();
             }
         }
     } else {
@@ -987,10 +1012,16 @@ function startGame() {
         if(myInfo) myInfo.style.display = 'none';
         if(btnRestart) btnRestart.innerText = "重新开始";
         if(btnHint) btnHint.innerText = "提示";
+        if(btnUndo) btnUndo.style.display = 'inline-block';
+        if(btnHint) btnHint.style.display = 'inline-block';
+        if(btnHome) btnHome.style.display = 'none';
         if(btnSettings) btnSettings.style.display = 'inline-block';
     } else {
         if(btnRestart) btnRestart.innerText = "退出房间";
         if(btnHint) btnHint.innerText = "和棋";
+        if(btnUndo) btnUndo.style.display = 'inline-block';
+        if(btnHint) btnHint.style.display = 'inline-block';
+        if(btnHome) btnHome.style.display = 'none';
         if(btnSettings) btnSettings.style.display = 'none';
     }
     if(aiWorker) {
@@ -1229,6 +1260,7 @@ function setupSocketEvents() {
             statusDiv.style.color = "#8e44ad";
             statusDiv.style.textShadow = "none";
             if (isOnline && btnRestart) btnRestart.innerText = "再来一局";
+            if(isOnline) updateOnlineGameOverUI();
             updateMyStats(false, true);
         } else {
             socket.emit('drawResponse', { roomId: currentRoomId, agreed: false });
@@ -1243,6 +1275,7 @@ function setupSocketEvents() {
             statusDiv.style.color = "#8e44ad";
             statusDiv.style.textShadow = "none";
             if (isOnline && btnRestart) btnRestart.innerText = "再来一局";
+            if(isOnline) updateOnlineGameOverUI();
             updateMyStats(false, true);
         } else {
             showAlert('对方拒绝了您的和棋请求。');
