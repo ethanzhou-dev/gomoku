@@ -264,26 +264,8 @@ function loadSettings() {
     if (savedMode !== null) {
         isPvE = savedMode === 'pve';
         modeRadios.forEach(radio => {
-    radio.addEventListener('change', function() {
-        isPvE = this.value === 'pve';
-        diffSelector.style.display = isPvE ? 'flex' : 'none';
-        if(pvpTypeSelector) pvpTypeSelector.style.display = isPvE ? 'none' : 'flex';
-        saveSettings();
-        if (!isOnline) startGame();
-    });
-});
-if(pvpTypeRadios) {
-    pvpTypeRadios.forEach(radio => {
-        radio.addEventListener('change', function() {
-            saveSettings();
-            if (this.value === 'local') {
-                isOnline = false;
-                if(socket) { socket.disconnect(); socket = null; }
-                startGame();
-            }
+            radio.checked = radio.value === savedMode;
         });
-    });
-}
         diffSelector.style.display = isPvE ? 'flex' : 'none';
         if(pvpTypeSelector) pvpTypeSelector.style.display = isPvE ? 'none' : 'flex';
     }
@@ -923,7 +905,6 @@ if(pvpTypeRadios) {
         });
     });
 }
-});
 
 diffRadios.forEach(radio => {
     radio.addEventListener('change', function() {
