@@ -1,3 +1,9 @@
+// 初始化 Socket.io 以备后续联机开发使用
+// const socket = io();
+// socket.on('connect', () => {
+//     console.log('Connected to server with ID:', socket.id);
+// });
+
 const workerCode = `
 const WIN_SCORE = 10000000;
 
