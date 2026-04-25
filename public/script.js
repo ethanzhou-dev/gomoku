@@ -315,10 +315,20 @@ function saveSettings() {
     if (checkedPvpType) localStorage.setItem('gomoku_pvpType', checkedPvpType.value);
 }
 
+function syncModeUI() {
+    const checkedMode = document.querySelector('input[name="mode"]:checked');
+    if (checkedMode) {
+        isPvE = checkedMode.value === 'pve';
+        if(diffSelector) diffSelector.style.display = isPvE ? 'flex' : 'none';
+        if(pvpTypeSelector) pvpTypeSelector.style.display = isPvE ? 'none' : 'flex';
+    }
+}
+
 window.addEventListener('DOMContentLoaded', () => {
     loadSettings();
     
     btnSettings.onclick = () => {
+        syncModeUI();
         modalSettings.style.display = 'flex';
     };
     
@@ -863,6 +873,8 @@ function leaveOnlineGame() {
     
     const localRadio = document.querySelector('input[name="pvpType"][value="local"]');
     if(localRadio) localRadio.checked = true;
+    
+    syncModeUI();
     saveSettings();
 
     if(opponentInfo) opponentInfo.style.display = 'none';
@@ -1038,11 +1050,7 @@ function startGame() {
     hintPos = null;
     statusDiv.style.color = "#2c3e50";
     
-    const checkedMode = document.querySelector('input[name="mode"]:checked');
-    if(checkedMode) {
-        isPvE = checkedMode.value === 'pve';
-        diffSelector.style.display = isPvE ? 'flex' : 'none';
-    }
+    syncModeUI();
     
     const checkedDiff = document.querySelector('input[name="difficulty"]:checked');
     if(checkedDiff) {
@@ -1324,6 +1332,8 @@ if(btnLeaveRooms) btnLeaveRooms.onclick = () => {
     
     const localRadio = document.querySelector('input[name="pvpType"][value="local"]');
     if(localRadio) localRadio.checked = true;
+    
+    syncModeUI();
     saveSettings();
     startGame();
 };
@@ -1339,6 +1349,8 @@ if(btnLeaveWaiting) btnLeaveWaiting.onclick = () => {
     if(pveRadio) pveRadio.checked = true;
     const localRadio = document.querySelector('input[name="pvpType"][value="local"]');
     if(localRadio) localRadio.checked = true;
+    
+    syncModeUI();
     saveSettings();
 
     if(modalWaiting) modalWaiting.style.display = 'none';
