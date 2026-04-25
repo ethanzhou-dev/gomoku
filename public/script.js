@@ -1037,13 +1037,26 @@ function enterOnlineMode() {
 
 if(btnSaveNickname) btnSaveNickname.onclick = () => {
     const name = nicknameInput.value.trim();
-    if (name) {
-        localStorage.setItem('gomoku_nickname', name);
-        modalNickname.style.display = 'none';
-        connectSocket(name);
-    } else {
+    if (!name) {
         showAlert('昵称不能为空');
+        return;
     }
+    
+    // 仅允许英文和数字
+    const alphanumericRegex = /^[a-zA-Z0-9]+$/;
+    if (!alphanumericRegex.test(name)) {
+        showAlert('昵称仅限英文和数字');
+        return;
+    }
+    
+    if (name.length > 10) {
+        showAlert('昵称太长了（最多10个字符）');
+        return;
+    }
+
+    localStorage.setItem('gomoku_nickname', name);
+    modalNickname.style.display = 'none';
+    connectSocket(name);
 };
 
 if(btnCancelNickname) btnCancelNickname.onclick = () => {
