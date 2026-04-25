@@ -84,30 +84,32 @@
                     </label>
                 </div>
 
-                <div class="mode-selector" id="pvp-type-selector" style="width: 100%; justify-content: center; margin-bottom: 10px; display: none;">
-                    <label class="skeuo-radio">
-                        <input type="radio" name="pvpType" value="local" checked>
-                        <span>本地</span>
-                    </label>
-                    <label class="skeuo-radio">
-                        <input type="radio" name="pvpType" value="online">
-                        <span>联网</span>
-                    </label>
-                </div>
+                <div class="dynamic-setting-area" style="width: 100%; display: grid; margin-bottom: 15px;">
+                    <div class="mode-selector" id="pvp-type-selector" style="grid-area: 1/1; width: 100%; justify-content: center; display: none;">
+                        <label class="skeuo-radio">
+                            <input type="radio" name="pvpType" value="local" checked>
+                            <span>本地</span>
+                        </label>
+                        <label class="skeuo-radio">
+                            <input type="radio" name="pvpType" value="online">
+                            <span>联网</span>
+                        </label>
+                    </div>
 
-                <div class="difficulty-selector" id="diff-selector" style="width: 100%; justify-content: center; margin-bottom: 15px; display: flex;">
-                    <label class="skeuo-radio">
-                        <input type="radio" name="difficulty" value="2">
-                        <span>简单</span>
-                    </label>
-                    <label class="skeuo-radio">
-                        <input type="radio" name="difficulty" value="4" checked>
-                        <span>普通</span>
-                    </label>
-                    <label class="skeuo-radio">
-                        <input type="radio" name="difficulty" value="6">
-                        <span>困难</span>
-                    </label>
+                    <div class="difficulty-selector" id="diff-selector" style="grid-area: 1/1; width: 100%; justify-content: center; display: flex;">
+                        <label class="skeuo-radio">
+                            <input type="radio" name="difficulty" value="2">
+                            <span>简单</span>
+                        </label>
+                        <label class="skeuo-radio">
+                            <input type="radio" name="difficulty" value="4" checked>
+                            <span>普通</span>
+                        </label>
+                        <label class="skeuo-radio">
+                            <input type="radio" name="difficulty" value="6">
+                            <span>困难</span>
+                        </label>
+                    </div>
                 </div>
             </div>
 
