@@ -1,0 +1,174 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    font-family: '楷体', 'STKaiti', 'Microsoft YaHei', sans-serif;
+    background: #2c3e50;
+    background-image: radial-gradient(circle, #44596e, #1a252f);
+    color: #333;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 10px;
+}
+
+.game-container {
+    background: linear-gradient(135deg, #e6d0a7, #c6a26d);
+    border: 8px solid #5c3a21;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 
+        inset 0 0 15px rgba(0,0,0,0.4),
+        0 15px 35px rgba(0,0,0,0.6),
+        0 0 0 1px #3a2212;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 500px;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 15px;
+    color: #4a2f18;
+}
+
+.header h1 {
+    font-size: 26px;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+    text-shadow: 1px 1px 0px rgba(255,255,255,0.6), -1px -1px 0px rgba(0,0,0,0.2);
+}
+
+.status {
+    font-size: 16px;
+    font-weight: bold;
+    display: inline-block;
+    padding: 4px 20px;
+    border-radius: 15px;
+    background: rgba(255,255,255,0.2);
+    box-shadow: inset 1px 1px 4px rgba(0,0,0,0.3), 1px 1px 0 rgba(255,255,255,0.4);
+    border: 1px solid rgba(0,0,0,0.1);
+}
+
+.board-container {
+    background-color: #d1a660;
+    /* 拟物木纹效果 */
+    background-image: 
+        repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.02) 10px, rgba(0,0,0,0.02) 20px),
+        linear-gradient(to right, #d1a660, #deb878, #d1a660);
+    padding: 10px;
+    border: 4px solid #4a2f18;
+    border-radius: 4px;
+    box-shadow: 
+        inset 2px 2px 5px rgba(255,255,255,0.2),
+        inset -2px -2px 5px rgba(0,0,0,0.4),
+        2px 2px 8px rgba(0,0,0,0.4);
+    margin-bottom: 20px;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+canvas {
+    background: transparent;
+    cursor: pointer;
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    width: 100%;
+}
+
+.skeuo-btn {
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: bold;
+    color: #222;
+    padding: 8px 18px;
+    border: 1px solid #777;
+    border-radius: 6px;
+    background: linear-gradient(to bottom, #f8f8f8, #c4c4c4);
+    box-shadow: 
+        inset 0 1px 0 rgba(255,255,255,0.9),
+        inset 0 -1px 2px rgba(0,0,0,0.1),
+        0 3px 5px rgba(0,0,0,0.3);
+    cursor: pointer;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.8);
+    transition: all 0.1s;
+    outline: none;
+}
+
+.skeuo-btn:active {
+    background: linear-gradient(to bottom, #d4d4d4, #f0f0f0);
+    box-shadow: 
+        inset 0 2px 5px rgba(0,0,0,0.4),
+        0 1px 1px rgba(0,0,0,0.2);
+    transform: translateY(2px);
+}
+
+.mode-selector {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    background: rgba(0,0,0,0.08);
+    padding: 6px 12px;
+    border-radius: 8px;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.2), 0 1px 0 rgba(255,255,255,0.4);
+    border: 1px solid rgba(0,0,0,0.1);
+}
+
+.skeuo-radio {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 14px;
+    color: #4a2f18;
+    font-weight: bold;
+    text-shadow: 1px 1px 0 rgba(255,255,255,0.3);
+}
+
+.skeuo-radio input {
+    margin-right: 5px;
+    cursor: pointer;
+    width: 14px;
+    height: 14px;
+}
+
+/* 移动端适配 */
+@media (max-width: 480px) {
+    .game-container {
+        border-width: 5px;
+        padding: 12px;
+    }
+    
+    .header h1 {
+        font-size: 22px;
+    }
+    
+    .board-container {
+        padding: 6px;
+    }
+    
+    .controls {
+        gap: 8px;
+    }
+    
+    .skeuo-btn {
+        padding: 8px 12px;
+        font-size: 14px;
+    }
+}
