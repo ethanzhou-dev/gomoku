@@ -6,6 +6,13 @@
     -webkit-tap-highlight-color: transparent;
 }
 
+html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    touch-action: none; /* 阻止移动端页面滚动和下拉刷新 */
+}
+
 body {
     font-family: '楷体', 'STKaiti', 'Microsoft YaHei', sans-serif;
     background: #2c3e50;
@@ -14,8 +21,8 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
     padding: 10px;
+    box-sizing: border-box;
 }
 
 .game-container {
@@ -32,12 +39,14 @@ body {
     align-items: center;
     width: 100%;
     max-width: 500px;
+    max-height: 100%;
 }
 
 .header {
     text-align: center;
-    margin-bottom: 15px;
+    margin-bottom: 10px;
     color: #4a2f18;
+    flex-shrink: 0;
 }
 
 .header h1 {
@@ -71,18 +80,23 @@ body {
         inset 2px 2px 5px rgba(255,255,255,0.2),
         inset -2px -2px 5px rgba(0,0,0,0.4),
         2px 2px 8px rgba(0,0,0,0.4);
-    margin-bottom: 20px;
+    margin-bottom: 15px;
     width: 100%;
     display: flex;
     justify-content: center;
+    align-items: center;
+    flex-grow: 1;
+    min-height: 0;
 }
 
 canvas {
     background: transparent;
     cursor: pointer;
     display: block;
-    width: 100%;
-    max-width: 450px;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
     aspect-ratio: 1 / 1;
     touch-action: none; /* 阻止移动端触摸滚动干扰下棋 */
 }
@@ -90,9 +104,10 @@ canvas {
 .controls {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
+    gap: 10px;
     justify-content: center;
     width: 100%;
+    flex-shrink: 0;
 }
 
 .skeuo-btn {
