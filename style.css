@@ -81,8 +81,10 @@ canvas {
     background: transparent;
     cursor: pointer;
     display: block;
-    max-width: 100%;
-    height: auto;
+    width: 100%;
+    max-width: 450px;
+    aspect-ratio: 1 / 1;
+    touch-action: none; /* 阻止移动端触摸滚动干扰下棋 */
 }
 
 .controls {

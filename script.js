@@ -228,14 +228,13 @@ function initBoard() {
 
 // 绘制棋盘
 function drawBoard() {
-    const containerWidth = canvas.parentElement.clientWidth - 12;
-    const maxSize = Math.min(450, containerWidth);
+    // 使用 CSS 渲染的实际宽度，避免强制设置 inline style 造成的布局跳动和闪烁
+    const rect = canvas.getBoundingClientRect();
+    const maxSize = rect.width || Math.min(450, canvas.parentElement.clientWidth - 12);
     
     const dpr = window.devicePixelRatio || 1;
     canvas.width = maxSize * dpr;
     canvas.height = maxSize * dpr;
-    canvas.style.width = maxSize + 'px';
-    canvas.style.height = maxSize + 'px';
     
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, maxSize, maxSize);
@@ -453,7 +452,7 @@ function playMove(i, j) {
     updateStatus();
 
     if (isPvE && !me && !over) {
-        statusDiv.innerText = "专业AI思考中...";
+        statusDiv.innerText = "AI思考中...";
         isAILoading = true;
         
         // 增加短暂延迟，让玩家的落子动画先跑起来
@@ -498,7 +497,8 @@ function checkWinDirect(r, c, role) {
 function updateStatus() {
     if(over) return;
     statusDiv.innerText = `轮到 ${me ? '黑子' : '白子'}`;
-    statusDiv.style.color = me ? "#2c3e50" : "#fff";
+    statusDiv.style.color = me ? "#2c3e50" : "#c0392b";
+    statusDiv.style.textShadow = me ? "none" : "1px 1px 0px rgba(255,255,255,0.5)";
 }
 
 // 悔棋逻辑
@@ -582,7 +582,7 @@ function startGame() {
     }
     
     updateStatus();
-    setTimeout(drawBoard, 50);
+    requestAnimationFrame(drawBoard);
 }
 
 window.onload = startGame;

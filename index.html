@@ -1,18 +1,20 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>经典拟物五子棋</title>
+    <title>经典五子棋</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div class="game-container">
         <div class="header">
             <h1>经典五子棋</h1>
             <div class="status" id="status">黑子先手</div>
         </div>
-        
+
         <div class="board-container">
             <canvas id="chessBoard" width="450" height="450"></canvas>
         </div>
@@ -30,7 +32,7 @@
                     <span>人机对战</span>
                 </label>
             </div>
-            
+
             <div class="difficulty-selector" id="diff-selector" style="display: none;">
                 <label class="skeuo-radio">
                     <input type="radio" name="difficulty" value="2">
@@ -49,4 +51,5 @@
     </div>
     <script src="script.js"></script>
 </body>
+
 </html>
