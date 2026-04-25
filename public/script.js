@@ -974,6 +974,9 @@ function startGame() {
         if(myInfo) myInfo.style.display = 'none';
         if(btnRestart) btnRestart.innerText = "重新开始";
         if(btnHint) btnHint.innerText = "提示";
+    } else {
+        if(btnRestart) btnRestart.innerText = "退出房间";
+        if(btnHint) btnHint.innerText = "和棋";
     }
     if(aiWorker) {
         aiWorker.terminate();
@@ -1129,6 +1132,83 @@ function setupSocketEvents() {
 
     socket.on('errorMsg', (msg) => {
         showAlert(msg);
+    });
+
+    socket.on('undoRequested', () => {
+        if (confirm("对方请求悔棋，是否同意？")) {
+            socket.emit('undoResponse', { roomId: currentRoomId, agreed: true });
+            
+            let requestRole = myRole === 1 ? 2 : 1;
+            if (historyMoves.length > 0) {
+                let last = historyMoves.pop();
+                board[last.x][last.y] = 0;
+                
+                let nextTurnRole = historyMoves.length % 2 === 0 ? 1 : 2;
+                if (nextTurnRole !== requestRole && historyMoves.length > 0) {
+                    last = historyMoves.pop();
+                    board[last.x][last.y] = 0;
+                }
+                
+                nextTurnRole = historyMoves.length % 2 === 0 ? 1 : 2;
+                me = (myRole === nextTurnRole);
+                
+                updateStatus();
+                drawBoard();
+            }
+        } else {
+            socket.emit('undoResponse', { roomId: currentRoomId, agreed: false });
+        }
+    });
+
+    socket.on('undoResult', (agreed) => {
+        if (agreed) {
+            showAlert('对方同意悔棋！');
+            let requestRole = myRole;
+            if (historyMoves.length > 0) {
+                let last = historyMoves.pop();
+                board[last.x][last.y] = 0;
+                
+                let nextTurnRole = historyMoves.length % 2 === 0 ? 1 : 2;
+                if (nextTurnRole !== requestRole && historyMoves.length > 0) {
+                    last = historyMoves.pop();
+                    board[last.x][last.y] = 0;
+                }
+                
+                nextTurnRole = historyMoves.length % 2 === 0 ? 1 : 2;
+                me = (myRole === nextTurnRole);
+                
+                updateStatus();
+                drawBoard();
+            }
+        } else {
+            showAlert('对方拒绝了您的悔棋请求。');
+        }
+    });
+
+    socket.on('drawRequested', () => {
+        if (confirm("对方请求和棋，是否同意？")) {
+            socket.emit('drawResponse', { roomId: currentRoomId, agreed: true });
+            over = true;
+            statusDiv.innerText = "双方和棋！";
+            statusDiv.style.color = "#8e44ad";
+            statusDiv.style.textShadow = "none";
+            updateMyStats(false, true);
+        } else {
+            socket.emit('drawResponse', { roomId: currentRoomId, agreed: false });
+        }
+    });
+
+    socket.on('drawResult', (agreed) => {
+        if (agreed) {
+            showAlert('对方同意和棋！');
+            over = true;
+            statusDiv.innerText = "双方和棋！";
+            statusDiv.style.color = "#8e44ad";
+            statusDiv.style.textShadow = "none";
+            updateMyStats(false, true);
+        } else {
+            showAlert('对方拒绝了您的和棋请求。');
+        }
     });
 }
 
