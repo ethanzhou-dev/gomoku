@@ -79,6 +79,14 @@ const diffRadios = document.getElementsByName('difficulty');
 const sizeRadios = document.getElementsByName('boardSize');
 
 function loadSettings() {
+    const savedPlayerColor = localStorage.getItem('gomoku_playerColor');
+    if (savedPlayerColor !== null) {
+        playerColor = parseInt(savedPlayerColor);
+        document.querySelectorAll('input[name="playerColor"]').forEach(radio => {
+            radio.checked = parseInt(radio.value) === playerColor;
+        });
+    }
+
     const savedPvpType = localStorage.getItem('gomoku_pvpType');
     if (savedPvpType !== null) {
         pvpTypeRadios.forEach(radio => {
@@ -123,6 +131,12 @@ function loadSettings() {
 }
 
 function saveSettings() {
+    const checkedColor = document.querySelector('input[name="playerColor"]:checked');
+    if (checkedColor) {
+        playerColor = parseInt(checkedColor.value);
+        localStorage.setItem('gomoku_playerColor', checkedColor.value);
+    }
+    
     localStorage.setItem('gomoku_forbidden', chkForbidden.checked);
     const checkedSize = document.querySelector('input[name="boardSize"]:checked');
     if (checkedSize) localStorage.setItem('gomoku_boardSize', checkedSize.value);
@@ -631,20 +645,23 @@ function playMove(i, j) {
     me = !me;
     updateStatus();
 
-    if (isPvE && !me && !over) {
-        statusDiv.innerText = "AI思考中...";
-        isAILoading = true;
-        
-        setTimeout(() => {
-            if(!aiWorker) initWorker();
+    if (isPvE && !over) {
+        let nextRole = me ? 1 : 2;
+        if (nextRole !== playerColor) {
+            statusDiv.innerText = "AI思考中...";
+            isAILoading = true;
             
-            aiWorker.postMessage({
-                board: board,
-                depth: aiDepth,
-                aiRole: 2,
-                isHint: false
-            });
-        }, 250);
+            setTimeout(() => {
+                if(!aiWorker) initWorker();
+                
+                aiWorker.postMessage({
+                    board: board,
+                    depth: aiDepth,
+                    aiRole: nextRole,
+                    isHint: false
+                });
+            }, 250);
+        }
     }
 }
 
@@ -740,7 +757,7 @@ btnUndo.onclick = function() {
         board[last.x][last.y] = 0;
         
         let nextTurnRole = historyMoves.length % 2 === 0 ? 1 : 2;
-        if (nextTurnRole !== 1 && historyMoves.length > 0) {
+        if (nextTurnRole !== playerColor && historyMoves.length > 0) {
             last = historyMoves.pop();
             board[last.x][last.y] = 0;
         }
@@ -902,6 +919,22 @@ function startGame() {
     
     updateStatus();
     requestAnimationFrame(drawBoard);
+
+    if (isPvE && playerColor === 2) {
+        statusDiv.innerText = "AI思考中...";
+        isAILoading = true;
+        
+        setTimeout(() => {
+            if(!aiWorker) initWorker();
+            
+            aiWorker.postMessage({
+                board: board,
+                depth: aiDepth,
+                aiRole: 1, // AI 执黑
+                isHint: false
+            });
+        }, 250);
+    }
 }
 
 window.onload = startGame;
