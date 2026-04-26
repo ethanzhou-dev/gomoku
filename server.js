@@ -356,28 +356,31 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         const sId = socketToSession[socket.id];
         console.log('User disconnected:', socket.id, 'Session:', sId);
+        
         if (sId && users[sId]) {
-            const roomId = users[sId].roomId;
-            if (roomId && rooms[roomId]) {
-                const room = rooms[roomId];
-                const opponentSessionId = room.host === sId ? room.guest : room.host;
-                
-                // Delay notifying the opponent to avoid flickering for fast reconnections
-                users[sId].notifyTimer = setTimeout(() => {
+            // 关键修复：只有当断开的是当前激活的 socket 时，才启动计时器
+            if (users[sId].socketId === socket.id) {
+                const roomId = users[sId].roomId;
+                if (roomId && rooms[roomId]) {
+                    const room = rooms[roomId];
+                    const opponentSessionId = room.host === sId ? room.guest : room.host;
+                    
                     if (opponentSessionId && users[opponentSessionId]) {
                         io.to(users[opponentSessionId].socketId).emit('opponentDisconnected', { timeout: 60 });
                     }
-                }, 3000); // 3 seconds grace period
 
-                // Start 60s cleanup timer
-                users[sId].disconnectTimer = setTimeout(() => {
-                    console.log('Session expired, cleaning up:', sId);
-                    handleLeaveRoom(sId, roomId);
+                    // 启动 60s 清理计时器
+                    users[sId].disconnectTimer = setTimeout(() => {
+                        console.log('Session expired, cleaning up:', sId);
+                        handleLeaveRoom(sId, roomId);
+                        delete users[sId];
+                    }, 60000);
+                } else {
+                    // 不在房间内，直接删除
                     delete users[sId];
-                }, 60000);
+                }
             } else {
-                // Not in a room, safe to delete immediately
-                delete users[sId];
+                console.log('Old socket disconnected, ignoring timer start for session:', sId);
             }
         }
         delete socketToSession[socket.id];
