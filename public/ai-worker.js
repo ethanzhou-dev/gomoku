@@ -1,12 +1,14 @@
+importScripts('rules.js');
+
 const WIN_SCORE = 10000000;
 
 self.onmessage = function(e) {
-    const { board, depth, aiRole, isHint } = e.data;
+    const { board, depth, aiRole, forbidden, isHint } = e.data;
     const humanRole = aiRole === 1 ? 2 : 1;
     const size = board.length;
     let bestMove = null;
 
-    function getCandidates(currentBoard) {
+    function getCandidates(currentBoard, role) {
         let candidates = [];
         let hasPiece = false;
         let visited = Array.from({length: size}, () => new Array(size).fill(false));
@@ -29,6 +31,11 @@ self.onmessage = function(e) {
         
         if (!hasPiece) {
             return [{r: Math.floor(size/2), c: Math.floor(size/2)}];
+        }
+
+        // 如果开启了禁手且当前是黑棋回合，过滤掉禁手位置
+        if (forbidden && role === 1) {
+            candidates = candidates.filter(pos => !checkForbidden(currentBoard, pos.r, pos.c, size));
         }
         
         candidates.forEach(pos => {
@@ -101,7 +108,8 @@ self.onmessage = function(e) {
             return evaluateBoard(currentBoard);
         }
 
-        const candidates = getCandidates(currentBoard);
+        const currentRole = isMaximizing ? aiRole : humanRole;
+        const candidates = getCandidates(currentBoard, currentRole);
         if (candidates.length === 0) return 0;
 
         if (isMaximizing) {
@@ -143,7 +151,7 @@ self.onmessage = function(e) {
         }
     }
 
-    let candidates = getCandidates(board);
+    let candidates = getCandidates(board, aiRole);
     
     for(let pos of candidates) {
         board[pos.r][pos.c] = aiRole;

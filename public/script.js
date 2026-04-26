@@ -523,94 +523,10 @@ function drawLastMoveMarker(i, j) {
     ctx.fill();
 }
 
-// 禁手判断辅助函数
-function getWinningSpots(line) {
-    let spots = [];
-    for(let i=0; i<line.length; i++) {
-        if (line[i] === '_') {
-            let temp = line.substring(0, i) + 'X' + line.substring(i+1);
-            if (temp.includes('XXXXX') && !temp.includes('XXXXXX')) {
-                spots.push(i);
-            }
-        }
-    }
-    return spots;
-}
-
-function isOpenThree(line) {
-    for(let i=0; i<line.length; i++) {
-        if (line[i] === '_') {
-            let temp = line.substring(0, i) + 'X' + line.substring(i+1);
-            let winSpots = getWinningSpots(temp);
-            if (winSpots.length >= 2) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-function checkForbidden(currentBoard, r, c) {
-    currentBoard[r][c] = 1; 
-    
-    let isFive = false;
-    let isOverline = false;
-    let fourSpots = new Set(); 
-    let openThreeCount = 0;
-    
-    const dirs = [[1,0], [0,1], [1,1], [1,-1]];
-    
-    for (let dir of dirs) {
-        let line = "";
-        let coords = [];
-        for(let i=-5; i<=5; i++) {
-            let nr = r + dir[0]*i;
-            let nc = c + dir[1]*i;
-            if(nr>=0 && nr<n && nc>=0 && nc<n) {
-                let piece = currentBoard[nr][nc];
-                line += piece === 0 ? '_' : (piece === 1 ? 'X' : 'O');
-            } else {
-                line += 'O';
-            }
-            coords.push(`${nr},${nc}`);
-        }
-        
-        if (line.includes('XXXXXX')) isOverline = true;
-        if (line.includes('XXXXX') && !line.includes('XXXXXX')) isFive = true;
-        
-        let lineFourSpots = getWinningSpots(line);
-        lineFourSpots.forEach(idx => fourSpots.add(coords[idx]));
-        
-        if (isOpenThree(line)) openThreeCount++;
-    }
-    
-    currentBoard[r][c] = 0; 
-    
-    if (isFive) return null; 
-    if (isOverline) return "长连禁手";
-    if (fourSpots.size >= 2) return "双四禁手";
-    if (openThreeCount >= 2) return "双三禁手";
-    
-    return null;
-}
-
-canvas.onclick = function (e) {
-    if (over || isAILoading || currentAnimation) return;
-    let currentRole = me ? 1 : 2;
-    if (isPvE && currentRole !== playerColor) return;
-    if (isOnline && currentRole !== myRole) return; 
-
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    const i = Math.floor((x - margin + cellSize/2) / cellSize);
-    const j = Math.floor((y - margin + cellSize/2) / cellSize);
-
     if (i >= 0 && i < n && j >= 0 && j < n && board[i][j] === 0) {
         
         if (me && chkForbidden && chkForbidden.checked) {
-            let forbiddenMsg = checkForbidden(board, i, j);
+            let forbiddenMsg = checkForbidden(board, i, j, n);
             if (forbiddenMsg) {
                 statusDiv.innerText = `禁手：${forbiddenMsg}，不可落子`;
                 statusDiv.style.color = "#c0392b";
@@ -695,6 +611,7 @@ function playMove(i, j) {
                     board: board,
                     depth: aiDepth,
                     aiRole: nextRole,
+                    forbidden: chkForbidden.checked,
                     isHint: false
                 });
             }, 250);
@@ -831,6 +748,7 @@ if (btnHint) {
                 board: board,
                 depth: aiDepth,
                 aiRole: me ? 1 : 2,
+                forbidden: chkForbidden.checked,
                 isHint: true
             });
         }, 250);    };
@@ -935,9 +853,9 @@ function startGame() {
                 board: board,
                 depth: aiDepth,
                 aiRole: 1, // AI 执黑
+                forbidden: chkForbidden.checked,
                 isHint: false
-            });
-        }, 250);
+            });        }, 250);
     }
 }
 
