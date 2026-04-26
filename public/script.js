@@ -209,6 +209,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 let cellSize = 30; 
 let margin = 15; 
+let n = 15; 
 
 let board = [];
 let me = true; 
@@ -522,6 +523,25 @@ function drawLastMoveMarker(i, j) {
     ctx.arc(x, y, cellSize * 0.15, 0, 2*Math.PI);
     ctx.fill();
 }
+
+canvas.onclick = function(e) {
+    if (over || isAILoading || currentAnimation) return;
+    if (isOnline && !((me && myRole === 1) || (!me && myRole === 2))) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // 获取实际绘制的棋盘尺寸（maxSize）
+    const parentWidth = canvas.parentElement ? canvas.parentElement.clientWidth : 0;
+    let maxSize = rect.width || Math.min(450, parentWidth - 12);
+    
+    // 将点击坐标转换到逻辑坐标系 (0 到 maxSize)
+    const clientX = x * (maxSize / rect.width);
+    const clientY = y * (maxSize / rect.height);
+
+    const i = Math.round((clientX - margin) / cellSize);
+    const j = Math.round((clientY - margin) / cellSize);
 
     if (i >= 0 && i < n && j >= 0 && j < n && board[i][j] === 0) {
         

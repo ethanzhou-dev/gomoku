@@ -44,7 +44,6 @@ io.on('connection', (socket) => {
             stats = { total: 0, win: 0 };
         }
         users[socket.id] = { name, stats };
-        users[socket.id] = { name };
         socket.emit('roomList', getAvailableRooms());
     });
 
