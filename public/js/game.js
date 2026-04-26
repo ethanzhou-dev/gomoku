@@ -441,7 +441,7 @@ export class Game {
         if (this.isOnline) {
             this.network.emit('drawRequest', this.currentRoomId);
         } else {
-            if (this.over || this.isAILoading) return;
+            if (this.over || this.isAILoading || this.historyMoves.length === 0) return;
             this.triggerAI(true);
         }
     }
