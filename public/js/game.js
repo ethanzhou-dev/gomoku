@@ -87,9 +87,13 @@ export class Game {
                 this.backToLobby();
             },
             onOpponentDisconnected: (data) => {
-                this.ui.updateStatus(`对方已断开，等待重连 (${data.timeout}s)...`, "#f39c12");
+                this.opponentDisconnected = true;
+                this.ui.showAlert(`对方已断开，等待重连 (${data.timeout}s)...`);
+                this.ui.updateStatus(`等待对方重连...`, "#f39c12");
             },
             onOpponentReconnected: () => {
+                this.opponentDisconnected = false;
+                this.ui.showAlert('对方已重连！');
                 this.ui.updateStatus('对方已重连', "#27ae60");
                 setTimeout(() => this.updateStatus(), 2000);
             },
@@ -440,7 +444,7 @@ export class Game {
     }
 
     updateStatus() {
-        if (this.over) return;
+        if (this.over || this.opponentDisconnected) return;
         const colorStr = this.me ? '黑子' : '白子';
         let text = "";
         if (this.isOnline) {
