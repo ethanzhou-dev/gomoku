@@ -61,11 +61,8 @@ io.on('connection', (socket) => {
                 const room = rooms[roomId];
                 socket.join(roomId);
                 
-                // Notify opponent
-                const opponentSessionId = room.host === sessionId ? room.guest : room.host;
-                if (opponentSessionId && users[opponentSessionId]) {
-                    io.to(users[opponentSessionId].socketId).emit('opponentReconnected');
-                }
+                // Notify others in the room
+                socket.to(roomId).emit('opponentReconnected');
 
                 // Send current game state
                 socket.emit('gameStart', {
@@ -150,6 +147,10 @@ io.on('connection', (socket) => {
         if (!users[sId]) return;
         const room = rooms[roomId];
         if (room && room.status === 'waiting') {
+            if (room.host === sId) {
+                socket.emit('errorMsg', '不能加入自己创建的房间');
+                return;
+            }
             room.guest = sId;
             room.status = 'playing';
             users[sId].roomId = roomId;
@@ -363,11 +364,9 @@ io.on('connection', (socket) => {
                 const roomId = users[sId].roomId;
                 if (roomId && rooms[roomId]) {
                     const room = rooms[roomId];
-                    const opponentSessionId = room.host === sId ? room.guest : room.host;
                     
-                    if (opponentSessionId && users[opponentSessionId]) {
-                        io.to(users[opponentSessionId].socketId).emit('opponentDisconnected', { timeout: 60 });
-                    }
+                    // Notify everyone else in the room
+                    socket.to(roomId).emit('opponentDisconnected', { timeout: 60 });
 
                     // 启动 60s 清理计时器
                     users[sId].disconnectTimer = setTimeout(() => {

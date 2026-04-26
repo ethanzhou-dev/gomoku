@@ -230,6 +230,7 @@ export class Game {
     startGame(isOnline = false) {
         this.isOnline = isOnline;
         this.over = false;
+        this.opponentDisconnected = false;
         this.board = [];
         for (let i = 0; i < this.settings.boardSize; i++) {
             this.board[i] = new Array(this.settings.boardSize).fill(0);
