@@ -122,7 +122,7 @@ io.on('connection', (socket) => {
         const { roomId, r, c, role } = data;
         const room = rooms[roomId];
         if (room && room.status === 'playing') {
-            const opponentId = role === 1 ? room.guest : room.host;
+            const opponentId = room.host === socket.id ? room.guest : room.host;
             if (opponentId) {
                 io.to(opponentId).emit('opponentMoved', { r, c });
             }
