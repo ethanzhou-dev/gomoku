@@ -151,9 +151,9 @@ function saveSettings() {
 function syncModeUI() {
     const checkedMode = document.querySelector('input[name="mode"]:checked');
     if (checkedMode) {
-        isPvE = checkedMode.value === 'pve';
-        if(diffSelector) diffSelector.style.display = isPvE ? 'flex' : 'none';
-        if(pvpTypeSelector) pvpTypeSelector.style.display = isPvE ? 'none' : 'flex';
+        const isPvE_temp = checkedMode.value === 'pve';
+        if(diffSelector) diffSelector.style.display = isPvE_temp ? 'flex' : 'none';
+        if(pvpTypeSelector) pvpTypeSelector.style.display = isPvE_temp ? 'none' : 'flex';
     }
 }
 
@@ -161,22 +161,53 @@ window.addEventListener('DOMContentLoaded', () => {
     loadSettings();
     
     btnSettings.onclick = () => {
+        loadSettings(); // 重新加载以重置未保存的更改
         syncModeUI();
         modalSettings.style.display = 'flex';
     };
     
     btnCloseSettings.onclick = () => {
         modalSettings.style.display = 'none';
-        const mode = document.querySelector('input[name="mode"]:checked').value;
-        const pvpTypeElem = document.querySelector('input[name="pvpType"]:checked');
-        const pvpType = pvpTypeElem ? pvpTypeElem.value : 'local';
         
-        if (mode === 'pvp' && pvpType === 'online') {
-            enterOnlineMode();
+        const checkedColor = document.querySelector('input[name="playerColor"]:checked');
+        const newPlayerColor = checkedColor ? parseInt(checkedColor.value) : window.playerColor;
+        
+        const newForbidden = chkForbidden.checked;
+        
+        const checkedSize = document.querySelector('input[name="boardSize"]:checked');
+        const newSize = checkedSize ? parseInt(checkedSize.value) : window.n;
+        
+        const checkedMode = document.querySelector('input[name="mode"]:checked');
+        const newMode = checkedMode ? checkedMode.value : (window.isPvE ? 'pve' : 'pvp');
+        
+        const checkedDiff = document.querySelector('input[name="difficulty"]:checked');
+        const newDiff = checkedDiff ? parseInt(checkedDiff.value) : window.aiDepth;
+        
+        const checkedPvpType = document.querySelector('input[name="pvpType"]:checked');
+        const newPvpType = checkedPvpType ? checkedPvpType.value : 'local';
+        
+        let changed = false;
+        if (newPlayerColor !== window.playerColor) changed = true;
+        if (newForbidden !== (localStorage.getItem('gomoku_forbidden') === 'true')) changed = true;
+        if (newSize !== window.n) changed = true;
+        if ((newMode === 'pve') !== window.isPvE) changed = true;
+        if (newDiff !== window.aiDepth) changed = true;
+        if (newPvpType !== (localStorage.getItem('gomoku_pvpType') || 'local')) changed = true;
+        
+        if (changed) {
+            saveSettings();
+            loadSettings();
+            if (newMode === 'pvp' && newPvpType === 'online') {
+                enterOnlineMode();
+            } else {
+                isOnline = false;
+                if (socket) { socket.disconnect(); socket = null; }
+                startGame();
+            }
         } else {
-            isOnline = false;
-            if (socket) { socket.disconnect(); socket = null; }
-            startGame();
+            if (newMode === 'pvp' && newPvpType === 'online' && !isOnline) {
+                enterOnlineMode();
+            }
         }
     };
 });
@@ -814,11 +845,54 @@ btnRestart.onclick = () => {
     }
 };
 
+chkForbidden.addEventListener('change', saveSettings);
+
+const colorRadios = document.getElementsByName('playerColor');
+if(colorRadios) {
+    colorRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            playerColor = parseInt(this.value);
+            saveSettings();
+            if (!isOnline) startGame();
+        });
+    });
+}
+
 modeRadios.forEach(radio => {
     radio.addEventListener('change', function() {
-        const isPvE_temp = this.value === 'pve';
-        diffSelector.style.display = isPvE_temp ? 'flex' : 'none';
-        if(pvpTypeSelector) pvpTypeSelector.style.display = isPvE_temp ? 'none' : 'flex';
+        isPvE = this.value === 'pve';
+        diffSelector.style.display = isPvE ? 'flex' : 'none';
+        if(pvpTypeSelector) pvpTypeSelector.style.display = isPvE ? 'none' : 'flex';
+        saveSettings();
+        if (!isOnline) startGame();
+    });
+});
+if(pvpTypeRadios) {
+    pvpTypeRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            saveSettings();
+            if (this.value === 'local') {
+                isOnline = false;
+                if(socket) { socket.disconnect(); socket = null; }
+                startGame();
+            }
+        });
+    });
+}
+
+diffRadios.forEach(radio => {
+    radio.addEventListener('change', function() {
+        aiDepth = parseInt(this.value);
+        saveSettings();
+        startGame();
+    });
+});
+
+sizeRadios.forEach(radio => {
+    radio.addEventListener('change', function() {
+        n = parseInt(this.value);
+        saveSettings();
+        startGame();
     });
 });
 
@@ -1116,83 +1190,6 @@ function setupSocketEvents() {
             statusDiv.style.color = "#8e44ad";
             statusDiv.style.textShadow = "none";
             if (isOnline && btnRestart) btnRestart.innerText = "再来一局";
-            if(isOnline) updateOnlineGameOverUI();
-            updateMyStats(false, true);
-        } else {
-            showAlert('对方拒绝了您的和棋请求。');
-        }
-    });
-
-    socket.on('rematchRequested', () => {
-        if (confirm("对方请求再来一局，是否同意？")) {
-            socket.emit('rematchResponse', { roomId: currentRoomId, agreed: true });
-            myRole = myRole === 1 ? 2 : 1;
-            startGame();
-            showAlert('对战开始！你是' + (myRole === 1 ? '黑子' : '白子'));
-        } else {
-            socket.emit('rematchResponse', { roomId: currentRoomId, agreed: false });
-        }
-    });
-
-    socket.on('rematchResult', (agreed) => {
-        if (agreed) {
-            myRole = myRole === 1 ? 2 : 1;
-            showAlert('对方同意再来一局！你是' + (myRole === 1 ? '黑子' : '白子'));
-            startGame();
-        } else {
-            showAlert('对方拒绝了再来一局的请求。');
-        }
-    });
-}
-
-if(btnCreateRoom) btnCreateRoom.onclick = () => {
-    if (socket) {
-        socket.emit('createRoom', {
-            boardSize: document.querySelector('input[name="boardSize"]:checked').value,
-            forbidden: chkForbidden ? chkForbidden.checked : false
-        });
-    }
-};
-
-if(btnRefreshRooms) btnRefreshRooms.onclick = () => {
-    if (socket) socket.emit('getRoomList');
-};
-
-if(btnLeaveRooms) btnLeaveRooms.onclick = () => {
-    if(modalRoomList) modalRoomList.style.display = 'none';
-    isOnline = false;
-    if (socket) { socket.disconnect(); socket = null; }
-    
-    const pveRadio = document.querySelector('input[name="mode"][value="pve"]');
-    if(pveRadio) pveRadio.checked = true;
-    
-    const localRadio = document.querySelector('input[name="pvpType"][value="local"]');
-    if(localRadio) localRadio.checked = true;
-    
-    syncModeUI();
-    saveSettings();
-    startGame();
-};
-
-if(btnLeaveWaiting) btnLeaveWaiting.onclick = () => {
-    if (socket && currentRoomId) {
-        socket.emit('leaveRoom', currentRoomId);
-        currentRoomId = null;
-    }
-    isOnline = false;
-    if (socket) { socket.disconnect(); socket = null; }
-    const pveRadio = document.querySelector('input[name="mode"][value="pve"]');
-    if(pveRadio) pveRadio.checked = true;
-    const localRadio = document.querySelector('input[name="pvpType"][value="local"]');
-    if(localRadio) localRadio.checked = true;
-    
-    syncModeUI();
-    saveSettings();
-
-    if(modalWaiting) modalWaiting.style.display = 'none';
-    if(modalRoomList) modalRoomList.style.display = 'none';
-    startGame();
-};来一局";
             if(isOnline) updateOnlineGameOverUI();
             updateMyStats(false, true);
         } else {
