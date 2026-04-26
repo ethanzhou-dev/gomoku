@@ -20,6 +20,7 @@ export class Game {
         
         this.aiWorker = null;
         this.isAILoading = false;
+        this.previousState = null;
 
         this.init();
     }
@@ -53,17 +54,24 @@ export class Game {
                 this.ui.showAlert('对战开始！你是' + (this.myRole === 1 ? '黑子' : '白子'));
             },
             onGameStateUpdate: (state) => {
+                const isMyMove = state.lastMove && state.lastMove.role === this.myRole;
+                const wasOver = this.over;
+                
+                this.previousState = null; // Clear optimistic state
                 this.board = state.board;
                 this.historyMoves = state.history;
                 this.me = (state.turn === 1);
                 this.over = state.over;
                 
-                if (state.lastMove) {
+                // Only animate if it's the opponent's move
+                if (state.lastMove && !isMyMove) {
                     this.renderer.animateMove(state.lastMove.r, state.lastMove.c, state.lastMove.role);
                 }
                 
                 if (this.over) {
-                    this.handleGameOver(state.winner);
+                    if (!wasOver) {
+                        this.handleGameOver(state.winner);
+                    }
                 } else {
                     this.updateStatus();
                 }
@@ -75,6 +83,18 @@ export class Game {
             },
             onErrorMsg: (msg) => {
                 this.ui.showAlert(msg);
+                
+                // Rollback optimistic state if a move error occurred
+                if (this.previousState && (msg.includes('禁手') || msg.includes('不符合规则') || msg.includes('不是你的回合'))) {
+                    this.board = this.previousState.board;
+                    this.historyMoves = this.previousState.historyMoves;
+                    this.me = this.previousState.me;
+                    this.over = this.previousState.over;
+                    this.previousState = null;
+                    this.renderer.drawBoard(this.board, this.historyMoves, this.hintPos, this.me);
+                    this.updateStatus();
+                }
+
                 // 如果是加入失败等错误，确保回到列表
                 if (msg.includes('不存在') || msg.includes('已满')) {
                     this.backToLobby();
@@ -243,6 +263,25 @@ export class Game {
             if (this.isOnline) {
                 const currentRole = this.me ? 1 : 2;
                 if (currentRole === this.myRole) {
+                    // Optimistic update: Save state for rollback
+                    this.previousState = {
+                        board: JSON.parse(JSON.stringify(this.board)),
+                        historyMoves: [...this.historyMoves],
+                        me: this.me,
+                        over: this.over
+                    };
+                    
+                    // Local forbidden check for immediate feedback
+                    if (currentRole === 1 && this.settings.forbidden) {
+                        const msg = GomokuRules.checkForbidden(this.board, i, j, this.settings.boardSize);
+                        if (msg) {
+                            this.ui.updateStatus(`禁手：${msg}`, "#c0392b");
+                            this.previousState = null;
+                            return;
+                        }
+                    }
+
+                    this.executeMove(i, j);
                     this.network.emit('requestMove', { roomId: this.currentRoomId, r: i, c: j });
                 }
             } else {
