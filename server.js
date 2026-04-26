@@ -40,15 +40,13 @@ io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
 
     socket.on('setNickname', (data) => {
-        let name, stats;
+        let name;
         if (typeof data === 'object') {
             name = data.name;
-            stats = data.stats || { total: 0, win: 0 };
         } else {
             name = data;
-            stats = { total: 0, win: 0 };
         }
-        users[socket.id] = { name, stats };
+        users[socket.id] = { name };
         socket.emit('roomList', getAvailableRooms());
     });
 

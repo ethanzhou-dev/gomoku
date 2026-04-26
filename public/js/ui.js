@@ -20,12 +20,6 @@ export class UI {
             alertMsg: document.getElementById('alert-msg'),
             btnAlertOk: document.getElementById('btn-alert-ok'),
             alertTitle: document.getElementById('alert-title'),
-            opponentInfo: document.getElementById('opponent-info'),
-            opponentNameElem: document.getElementById('opponent-name'),
-            opponentStatsElem: document.getElementById('opponent-stats'),
-            myInfo: document.getElementById('my-info'),
-            myNameElem: document.getElementById('my-name'),
-            myStatsElem: document.getElementById('my-stats'),
             canvas: document.getElementById('chessBoard'),
             statusDiv: document.getElementById('status'),
             btnRestart: document.getElementById('btn-restart'),
@@ -115,23 +109,5 @@ export class UI {
             difficulty: parseInt(Array.from(this.elements.diffRadios).find(r => r.checked)?.value || 4),
             pvpType: Array.from(this.elements.pvpTypeRadios).find(r => r.checked)?.value
         };
-    }
-
-    updatePlayerInfo(myInfo, opponentInfo) {
-        if (myInfo) {
-            this.elements.myInfo.style.display = 'flex';
-            this.elements.myNameElem.innerText = myInfo.name;
-            this.elements.myStatsElem.innerText = `${myInfo.stats.total}局 ${myInfo.stats.total > 0 ? Math.round(myInfo.stats.win/myInfo.stats.total*100) : 0}%胜`;
-        } else {
-            this.elements.myInfo.style.display = 'none';
-        }
-
-        if (opponentInfo) {
-            this.elements.opponentInfo.style.display = 'flex';
-            this.elements.opponentNameElem.innerText = opponentInfo.name;
-            this.elements.opponentStatsElem.innerText = `${opponentInfo.stats.total}局 ${opponentInfo.stats.total > 0 ? Math.round(opponentInfo.stats.win/opponentInfo.stats.total*100) : 0}%胜`;
-        } else {
-            this.elements.opponentInfo.style.display = 'none';
-        }
     }
 }

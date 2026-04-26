@@ -49,11 +49,6 @@ export class Game {
                 this.settings.forbidden = data.forbidden;
                 this.ui.elements.chkForbidden.checked = data.forbidden;
                 
-                this.ui.updatePlayerInfo(
-                    { name: this.myRole === 1 ? data.hostName : data.guestName, stats: this.myRole === 1 ? data.hostStats : data.guestStats },
-                    { name: this.myRole === 1 ? data.guestName : data.hostName, stats: this.myRole === 1 ? data.guestStats : data.hostStats }
-                );
-                
                 this.startGame(true);
                 this.ui.showAlert('对战开始！你是' + (this.myRole === 1 ? '黑子' : '白子'));
             },
@@ -191,11 +186,16 @@ export class Game {
         this.hintPos = null;
         this.renderer.setBoardSize(this.settings.boardSize);
         
+        // 重置所有按钮显示状态
+        this.ui.elements.btnRestart.style.display = 'inline-block';
+        this.ui.elements.btnUndo.style.display = 'inline-block';
+        this.ui.elements.btnHint.style.display = 'inline-block';
+        this.ui.elements.btnSettings.style.display = this.isOnline ? 'none' : 'inline-block';
+        this.ui.elements.btnHome.style.display = 'none';
+
         if (!this.isOnline) {
-            this.ui.updatePlayerInfo(null, null);
             this.ui.elements.btnRestart.innerText = "重新开始";
             this.ui.elements.btnHint.innerText = "提示";
-            this.ui.elements.btnHome.style.display = 'none';
         } else {
             this.ui.elements.btnRestart.innerText = "退出房间";
             this.ui.elements.btnHint.innerText = "和棋";
@@ -385,7 +385,14 @@ export class Game {
         }
         this.ui.updateStatus(msg, "#c0392b");
         this.ui.showAlert(msg);
-        if (this.isOnline) this.ui.elements.btnHome.style.display = 'inline-block';
+        
+        if (this.isOnline) {
+            this.ui.elements.btnRestart.innerText = "再来一局";
+            this.ui.elements.btnUndo.style.display = 'none'; // 隐藏悔棋
+            this.ui.elements.btnHint.style.display = 'none'; // 隐藏和棋
+            this.ui.elements.btnHome.style.display = 'inline-block'; // 显示返回首页
+            this.ui.elements.btnSettings.style.display = 'none'; // 隐藏设置
+        }
     }
 
     enterOnlineMode() {
