@@ -110,4 +110,37 @@ export class UI {
             pvpType: Array.from(this.elements.pvpTypeRadios).find(r => r.checked)?.value
         };
     }
+
+    setSettings(settings) {
+        // 同步禁手
+        this.elements.chkForbidden.checked = settings.forbidden;
+        
+        // 同步棋盘大小
+        this.elements.sizeRadios.forEach(r => {
+            r.checked = (parseInt(r.value) === settings.boardSize);
+        });
+        
+        // 同步模式 (PVE/PVP)
+        this.elements.modeRadios.forEach(r => {
+            r.checked = (r.value === settings.mode);
+        });
+        
+        // 同步玩家颜色
+        this.elements.playerColorRadios.forEach(r => {
+            r.checked = (parseInt(r.value) === settings.playerColor);
+        });
+        
+        // 同步对战类型 (本地/联网)
+        this.elements.pvpTypeRadios.forEach(r => {
+            r.checked = (r.value === settings.pvpType);
+        });
+        
+        // 同步难度
+        this.elements.diffRadios.forEach(r => {
+            r.checked = (parseInt(r.value) === settings.difficulty);
+        });
+
+        // 刷新显示/隐藏逻辑
+        this.syncModeUI();
+    }
 }

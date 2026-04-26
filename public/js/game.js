@@ -153,20 +153,32 @@ export class Game {
     }
 
     openSettings() {
+        this.ui.setSettings(this.settings);
         this.ui.showModal('modalSettings');
     }
 
     closeSettings() {
         const newSettings = this.ui.getSettings();
-        const changed = JSON.stringify(this.settings) !== JSON.stringify(newSettings);
+        // 简单对比是否发生实质变化
+        const modeChanged = this.settings.mode !== newSettings.mode;
+        const typeChanged = this.settings.pvpType !== newSettings.pvpType;
+        const sizeChanged = this.settings.boardSize !== newSettings.boardSize;
+        const colorChanged = this.settings.playerColor !== newSettings.playerColor;
+        const forbiddenChanged = this.settings.forbidden !== newSettings.forbidden;
+        const diffChanged = this.settings.difficulty !== newSettings.difficulty;
+
         this.settings = newSettings;
         this.saveSettings();
         this.ui.hideModal('modalSettings');
         
-        if (changed) {
-            if (this.settings.mode === 'pvp' && this.settings.pvpType === 'online') {
+        if (this.settings.mode === 'pvp' && this.settings.pvpType === 'online') {
+            // 如果切到了联网模式，且当前并不是在联网状态（或者就是想刷出房间列表）
+            if (!this.isOnline || modeChanged || typeChanged) {
                 this.enterOnlineMode();
-            } else {
+            }
+        } else {
+            // 如果是 PVE 或 本地 PVP
+            if (modeChanged || typeChanged || sizeChanged || colorChanged || forbiddenChanged || (this.settings.mode === 'pve' && diffChanged)) {
                 this.isOnline = false;
                 this.network.disconnect();
                 this.startGame();
