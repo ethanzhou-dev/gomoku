@@ -123,6 +123,10 @@ export class Game {
         this.ui.elements.btnSettings.onclick = () => this.openSettings();
         this.ui.elements.btnCloseSettings.onclick = () => this.closeSettings();
         this.ui.elements.btnHome.onclick = () => this.leaveOnlineGame();
+
+        this.ui.elements.modeRadios.forEach(radio => {
+            radio.onchange = () => this.ui.syncModeUI();
+        });
         
         // Online UI
         this.ui.elements.btnSaveNickname.onclick = () => this.saveNickname();
@@ -268,17 +272,42 @@ export class Game {
         this.isAILoading = true;
         this.ui.updateStatus(isHint ? "获取提示中..." : "AI思考中...");
         
+        const startTime = Date.now();
+        const minDelay = 500; // 500ms minimum delay
+
         if (!this.aiWorker) {
             this.aiWorker = new Worker('ai-worker.js');
             this.aiWorker.onmessage = (e) => {
-                this.isAILoading = false;
-                if (e.data.isHint) {
-                    this.hintPos = { x: e.data.r, y: e.data.c, start: performance.now() };
-                    this.renderer.drawBoard(this.board, this.historyMoves, this.hintPos, this.me);
-                } else {
-                    this.executeMove(e.data.r, e.data.c);
-                }
-                this.updateStatus();
+                const timeTaken = Date.now() - startTime;
+                const remainingDelay = Math.max(0, minDelay - timeTaken);
+
+                setTimeout(() => {
+                    this.isAILoading = false;
+                    if (e.data.isHint) {
+                        this.hintPos = { x: e.data.r, y: e.data.c, start: performance.now() };
+                        this.renderer.drawBoard(this.board, this.historyMoves, this.hintPos, this.me);
+                    } else {
+                        this.executeMove(e.data.r, e.data.c);
+                    }
+                    this.updateStatus();
+                }, remainingDelay);
+            };
+        } else {
+            // Re-bind onmessage to use current startTime if worker already exists
+            this.aiWorker.onmessage = (e) => {
+                const timeTaken = Date.now() - startTime;
+                const remainingDelay = Math.max(0, minDelay - timeTaken);
+
+                setTimeout(() => {
+                    this.isAILoading = false;
+                    if (e.data.isHint) {
+                        this.hintPos = { x: e.data.r, y: e.data.c, start: performance.now() };
+                        this.renderer.drawBoard(this.board, this.historyMoves, this.hintPos, this.me);
+                    } else {
+                        this.executeMove(e.data.r, e.data.c);
+                    }
+                    this.updateStatus();
+                }, remainingDelay);
             };
         }
 
