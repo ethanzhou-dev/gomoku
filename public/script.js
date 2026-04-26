@@ -845,54 +845,11 @@ btnRestart.onclick = () => {
     }
 };
 
-chkForbidden.addEventListener('change', saveSettings);
-
-const colorRadios = document.getElementsByName('playerColor');
-if(colorRadios) {
-    colorRadios.forEach(radio => {
-        radio.addEventListener('change', function() {
-            playerColor = parseInt(this.value);
-            saveSettings();
-            if (!isOnline) startGame();
-        });
-    });
-}
-
 modeRadios.forEach(radio => {
     radio.addEventListener('change', function() {
-        isPvE = this.value === 'pve';
-        diffSelector.style.display = isPvE ? 'flex' : 'none';
-        if(pvpTypeSelector) pvpTypeSelector.style.display = isPvE ? 'none' : 'flex';
-        saveSettings();
-        if (!isOnline) startGame();
-    });
-});
-if(pvpTypeRadios) {
-    pvpTypeRadios.forEach(radio => {
-        radio.addEventListener('change', function() {
-            saveSettings();
-            if (this.value === 'local') {
-                isOnline = false;
-                if(socket) { socket.disconnect(); socket = null; }
-                startGame();
-            }
-        });
-    });
-}
-
-diffRadios.forEach(radio => {
-    radio.addEventListener('change', function() {
-        aiDepth = parseInt(this.value);
-        saveSettings();
-        startGame();
-    });
-});
-
-sizeRadios.forEach(radio => {
-    radio.addEventListener('change', function() {
-        n = parseInt(this.value);
-        saveSettings();
-        startGame();
+        const isPvE_temp = this.value === 'pve';
+        diffSelector.style.display = isPvE_temp ? 'flex' : 'none';
+        if(pvpTypeSelector) pvpTypeSelector.style.display = isPvE_temp ? 'none' : 'flex';
     });
 });
 
