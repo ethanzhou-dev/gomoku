@@ -3,6 +3,7 @@ let socket = null;
 let currentRoomId = null;
 let myRole = null; // 1 (black) or 2 (white)
 let isOnline = false;
+let playerColor = 1;
 
 // DOM Elements
 const pvpTypeSelector = document.getElementById('pvp-type-selector');
@@ -544,8 +545,9 @@ function checkForbidden(currentBoard, r, c) {
 
 canvas.onclick = function (e) {
     if (over || isAILoading || currentAnimation) return;
-    if (isPvE && !me) return;
-    if (isOnline && (!me && myRole === 1 || me && myRole === 2)) return; 
+    let currentRole = me ? 1 : 2;
+    if (isPvE && currentRole !== playerColor) return;
+    if (isOnline && currentRole !== myRole) return; 
 
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -665,10 +667,15 @@ function checkWinDirect(r, c, role) {
 
 function updateStatus() {
     if(over) return;
+    let currentRole = me ? 1 : 2;
     if (isOnline && myRole) {
-        let isMyTurn = (myRole === 1 && me) || (myRole === 2 && !me);
+        let isMyTurn = currentRole === myRole;
         let colorStr = me ? '黑子' : '白子';
         statusDiv.innerText = `轮到 ${isMyTurn ? '你' : '对方'} (${colorStr})`;
+    } else if (isPvE) {
+        let isMyTurn = currentRole === playerColor;
+        let colorStr = me ? '黑子' : '白子';
+        statusDiv.innerText = `轮到 ${isMyTurn ? '你' : 'AI'} (${colorStr})`;
     } else {
         statusDiv.innerText = `轮到 ${me ? '黑子' : '白子'}`;
     }
@@ -758,7 +765,8 @@ if (btnHint) {
             }
             return;
         }
-        if (historyMoves.length === 0 || (isPvE && !me)) return;
+        let currentRole = me ? 1 : 2;
+        if (historyMoves.length === 0 || (isPvE && currentRole !== playerColor)) return;
         
         isAILoading = true;
 
@@ -790,6 +798,17 @@ btnRestart.onclick = () => {
 };
 
 chkForbidden.addEventListener('change', saveSettings);
+
+const colorRadios = document.getElementsByName('playerColor');
+if(colorRadios) {
+    colorRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            playerColor = parseInt(this.value);
+            saveSettings();
+            if (!isOnline) startGame();
+        });
+    });
+}
 
 modeRadios.forEach(radio => {
     radio.addEventListener('change', function() {
@@ -1183,4 +1202,4 @@ if(btnLeaveWaiting) btnLeaveWaiting.onclick = () => {
     if(modalWaiting) modalWaiting.style.display = 'none';
     if(modalRoomList) modalRoomList.style.display = 'none';
     startGame();
-};
+};\n

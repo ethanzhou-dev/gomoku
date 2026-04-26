@@ -88,7 +88,8 @@ io.on('connection', (socket) => {
                 size: room.size,
                 forbidden: room.forbidden,
                 hostId: room.host,
-                guestId: room.guest
+                guestId: room.guest,
+                hostColor: room.hostColor
             });
             
             io.emit('roomList', getAvailableRooms());
@@ -210,4 +211,6 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
+});
+
 });
