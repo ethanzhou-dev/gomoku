@@ -1202,4 +1202,4 @@ if(btnLeaveWaiting) btnLeaveWaiting.onclick = () => {
     if(modalWaiting) modalWaiting.style.display = 'none';
     if(modalRoomList) modalRoomList.style.display = 'none';
     startGame();
-};\n
+};
