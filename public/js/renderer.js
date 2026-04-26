@@ -6,6 +6,7 @@ export class Renderer {
         this.cellSize = 30;
         this.margin = 15;
         this.currentAnimation = null;
+        this.animationFrameId = null;
     }
 
     setBoardSize(n) {
@@ -13,6 +14,11 @@ export class Renderer {
     }
 
     drawBoard(board, historyMoves, hintPos, me) {
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
+
         const rect = this.canvas.getBoundingClientRect();
         const parentWidth = this.canvas.parentElement ? this.canvas.parentElement.clientWidth : 0;
         let maxSize = rect.width || Math.min(450, parentWidth - 12);
@@ -92,6 +98,7 @@ export class Renderer {
         }
         
         // Animation
+        let needsNextFrame = false;
         if (this.currentAnimation) {
             let now = performance.now();
             let progress = (now - this.currentAnimation.start) / this.currentAnimation.duration;
@@ -113,16 +120,20 @@ export class Renderer {
                 this.ctx.globalAlpha = animOpts.globalAlpha;
                 this.drawChess(this.currentAnimation.x, this.currentAnimation.y, this.currentAnimation.role === 1, animOpts);
                 this.ctx.restore();
-                requestAnimationFrame(() => this.drawBoard(board, historyMoves, hintPos, me));
+                needsNextFrame = true;
             }
         }
         
         // Hint
         if (hintPos) {
             this.drawHint(hintPos, me);
-            requestAnimationFrame(() => this.drawBoard(board, historyMoves, hintPos, me));
+            needsNextFrame = true;
         }
         
+        if (needsNextFrame) {
+            this.animationFrameId = requestAnimationFrame(() => this.drawBoard(board, historyMoves, hintPos, me));
+        }
+
         // Last move marker
         if(historyMoves.length > 0) {
             let lastMove = historyMoves[historyMoves.length - 1];
