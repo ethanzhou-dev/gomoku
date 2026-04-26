@@ -49,6 +49,10 @@ io.on('connection', (socket) => {
                 clearTimeout(users[sessionId].disconnectTimer);
                 users[sessionId].disconnectTimer = null;
             }
+            if (users[sessionId].notifyTimer) {
+                clearTimeout(users[sessionId].notifyTimer);
+                users[sessionId].notifyTimer = null;
+            }
             users[sessionId].socketId = socket.id;
             socketToSession[socket.id] = sessionId;
 
@@ -357,11 +361,15 @@ io.on('connection', (socket) => {
             if (roomId && rooms[roomId]) {
                 const room = rooms[roomId];
                 const opponentSessionId = room.host === sId ? room.guest : room.host;
-                if (opponentSessionId && users[opponentSessionId]) {
-                    io.to(users[opponentSessionId].socketId).emit('opponentDisconnected', { timeout: 60 });
-                }
+                
+                // Delay notifying the opponent to avoid flickering for fast reconnections
+                users[sId].notifyTimer = setTimeout(() => {
+                    if (opponentSessionId && users[opponentSessionId]) {
+                        io.to(users[opponentSessionId].socketId).emit('opponentDisconnected', { timeout: 60 });
+                    }
+                }, 3000); // 3 seconds grace period
 
-                // Start 60s timer
+                // Start 60s cleanup timer
                 users[sId].disconnectTimer = setTimeout(() => {
                     console.log('Session expired, cleaning up:', sId);
                     handleLeaveRoom(sId, roomId);
