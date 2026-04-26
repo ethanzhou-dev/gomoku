@@ -9,6 +9,7 @@
 @font-face {
     font-family: 'LocalKaiti';
     src: url('simkai-lite.ttf') format('truetype');
+    font-display: block;
 }
 
 html, body {
