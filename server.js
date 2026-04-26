@@ -13,7 +13,8 @@ const io = new Server(server);
 app.use(express.static(path.join(__dirname, 'public')));
 
 let rooms = {}; // roomId -> { id, host, guest, size, forbidden, status, board, history, turn, over }
-let users = {}; // socket.id -> { name, stats }
+let users = {}; // sessionId -> { name, stats, socketId, roomId, disconnectTimer }
+let socketToSession = {}; // socket.id -> sessionId
 
 function generateRoomId() {
     return Math.floor(1000 + Math.random() * 9000).toString();
@@ -37,16 +38,78 @@ function initGameBoard(size) {
 }
 
 io.on('connection', (socket) => {
-    console.log('A user connected:', socket.id);
+    const { sessionId, nickname, stats } = socket.handshake.query;
+    console.log('A user connected:', socket.id, 'Session:', sessionId);
+
+    if (sessionId) {
+        if (users[sessionId]) {
+            // Reconnection
+            console.log('User reconnected:', nickname);
+            if (users[sessionId].disconnectTimer) {
+                clearTimeout(users[sessionId].disconnectTimer);
+                users[sessionId].disconnectTimer = null;
+            }
+            users[sessionId].socketId = socket.id;
+            socketToSession[socket.id] = sessionId;
+
+            const roomId = users[sessionId].roomId;
+            if (roomId && rooms[roomId]) {
+                const room = rooms[roomId];
+                socket.join(roomId);
+                
+                // Notify opponent
+                const opponentSessionId = room.host === sessionId ? room.guest : room.host;
+                if (opponentSessionId && users[opponentSessionId]) {
+                    io.to(users[opponentSessionId].socketId).emit('opponentReconnected');
+                }
+
+                // Send current game state
+                socket.emit('gameStart', {
+                    roomId: roomId,
+                    hostName: users[room.host].name,
+                    hostStats: users[room.host].stats,
+                    guestName: users[room.guest]?.name,
+                    guestStats: users[room.guest]?.stats,
+                    size: room.size,
+                    forbidden: room.forbidden,
+                    hostId: users[room.host].socketId,
+                    guestId: room.guest ? users[room.guest].socketId : null,
+                    isReconnect: true
+                });
+
+                process.nextTick(() => {
+                    socket.emit('gameStateUpdate', {
+                        board: room.board,
+                        history: room.history,
+                        turn: room.turn,
+                        over: room.over,
+                        winner: room.winner
+                    });
+                });
+            }
+        } else {
+            // New connection with sessionId
+            users[sessionId] = { 
+                name: nickname, 
+                stats: stats ? JSON.parse(stats) : {}, 
+                socketId: socket.id,
+                roomId: null
+            };
+            socketToSession[socket.id] = sessionId;
+        }
+    }
 
     socket.on('setNickname', (data) => {
+        const sId = socketToSession[socket.id];
+        if (!sId) return;
+        
         let name;
         if (typeof data === 'object') {
             name = data.name;
         } else {
             name = data;
         }
-        users[socket.id] = { name };
+        users[sId].name = name;
         socket.emit('roomList', getAvailableRooms());
     });
 
@@ -55,12 +118,13 @@ io.on('connection', (socket) => {
     });
 
     socket.on('createRoom', (settings) => {
-        if (!users[socket.id]) return;
+        const sId = socketToSession[socket.id];
+        if (!users[sId]) return;
         const roomId = generateRoomId();
         const size = parseInt(settings.boardSize) || 15;
         rooms[roomId] = {
             id: roomId,
-            host: socket.id,
+            host: sId,
             guest: null,
             size: size,
             forbidden: settings.forbidden,
@@ -71,17 +135,20 @@ io.on('connection', (socket) => {
             over: false,
             winner: null
         };
+        users[sId].roomId = roomId;
         socket.join(roomId);
         socket.emit('roomCreated', roomId);
         io.emit('roomList', getAvailableRooms());
     });
 
     socket.on('joinRoom', (roomId) => {
-        if (!users[socket.id]) return;
+        const sId = socketToSession[socket.id];
+        if (!users[sId]) return;
         const room = rooms[roomId];
         if (room && room.status === 'waiting') {
-            room.guest = socket.id;
+            room.guest = sId;
             room.status = 'playing';
+            users[sId].roomId = roomId;
             socket.join(roomId);
             
             io.to(roomId).emit('gameStart', {
@@ -92,8 +159,8 @@ io.on('connection', (socket) => {
                 guestStats: users[room.guest].stats,
                 size: room.size,
                 forbidden: room.forbidden,
-                hostId: room.host,
-                guestId: room.guest
+                hostId: users[room.host].socketId,
+                guestId: users[room.guest].socketId
             });
             
             io.emit('roomList', getAvailableRooms());
@@ -115,7 +182,8 @@ io.on('connection', (socket) => {
         const room = rooms[roomId];
         if (!room || room.status !== 'playing' || room.over) return;
 
-        const role = socket.id === room.host ? 1 : 2;
+        const sId = socketToSession[socket.id];
+        const role = sId === room.host ? 1 : 2;
         if (room.turn !== role) return;
 
         // Validation
@@ -156,8 +224,11 @@ io.on('connection', (socket) => {
     socket.on('undoRequest', (roomId) => {
         const room = rooms[roomId];
         if (room && room.status === 'playing' && !room.over) {
-            const opponentId = room.host === socket.id ? room.guest : room.host;
-            if (opponentId) io.to(opponentId).emit('undoRequested');
+            const sId = socketToSession[socket.id];
+            const opponentSessionId = room.host === sId ? room.guest : room.host;
+            if (opponentSessionId && users[opponentSessionId]) {
+                io.to(users[opponentSessionId].socketId).emit('undoRequested');
+            }
         }
     });
 
@@ -165,8 +236,6 @@ io.on('connection', (socket) => {
         const { roomId, agreed } = data;
         const room = rooms[roomId];
         if (room && room.status === 'playing' && agreed) {
-            // Undo logic: pop until it's the requester's turn again (usually 2 moves in PvE, but here we just pop 1 or 2 depending on who asked)
-            // Actually in PvP, usually you undo the LAST move, so the turn reverts.
             if (room.history.length > 0) {
                 const lastMove = room.history.pop();
                 room.board[lastMove.r][lastMove.c] = 0;
@@ -183,15 +252,21 @@ io.on('connection', (socket) => {
                 });
             }
         }
-        const opponentId = room.host === socket.id ? room.guest : room.host;
-        if (opponentId) io.to(opponentId).emit('undoResult', agreed);
+        const sId = socketToSession[socket.id];
+        const opponentSessionId = room.host === sId ? room.guest : room.host;
+        if (opponentSessionId && users[opponentSessionId]) {
+            io.to(users[opponentSessionId].socketId).emit('undoResult', agreed);
+        }
     });
 
     socket.on('drawRequest', (roomId) => {
         const room = rooms[roomId];
         if (room && room.status === 'playing' && !room.over) {
-            const opponentId = room.host === socket.id ? room.guest : room.host;
-            if (opponentId) io.to(opponentId).emit('drawRequested');
+            const sId = socketToSession[socket.id];
+            const opponentSessionId = room.host === sId ? room.guest : room.host;
+            if (opponentSessionId && users[opponentSessionId]) {
+                io.to(users[opponentSessionId].socketId).emit('drawRequested');
+            }
         }
     });
 
@@ -209,15 +284,21 @@ io.on('connection', (socket) => {
                 winner: 0
             });
         }
-        const opponentId = room.host === socket.id ? room.guest : room.host;
-        if (opponentId) io.to(opponentId).emit('drawResult', agreed);
+        const sId = socketToSession[socket.id];
+        const opponentSessionId = room.host === sId ? room.guest : room.host;
+        if (opponentSessionId && users[opponentSessionId]) {
+            io.to(users[opponentSessionId].socketId).emit('drawResult', agreed);
+        }
     });
 
     socket.on('rematchRequest', (roomId) => {
         const room = rooms[roomId];
         if (room) {
-            const opponentId = room.host === socket.id ? room.guest : room.host;
-            if (opponentId) io.to(opponentId).emit('rematchRequested');
+            const sId = socketToSession[socket.id];
+            const opponentSessionId = room.host === sId ? room.guest : room.host;
+            if (opponentSessionId && users[opponentSessionId]) {
+                io.to(users[opponentSessionId].socketId).emit('rematchRequested');
+            }
         }
     });
 
@@ -244,8 +325,8 @@ io.on('connection', (socket) => {
                 guestStats: users[room.guest].stats,
                 size: room.size,
                 forbidden: room.forbidden,
-                hostId: room.host,
-                guestId: room.guest
+                hostId: users[room.host].socketId,
+                guestId: users[room.guest].socketId
             });
 
             io.to(roomId).emit('gameStateUpdate', {
@@ -256,36 +337,69 @@ io.on('connection', (socket) => {
                 winner: room.winner
             });
         }
-        const opponentId = room.host === socket.id ? room.guest : room.host;
-        if (opponentId) io.to(opponentId).emit('rematchResult', agreed);
+        const sId = socketToSession[socket.id];
+        const opponentSessionId = room.host === sId ? room.guest : room.host;
+        if (opponentSessionId && users[opponentSessionId]) {
+            io.to(users[opponentSessionId].socketId).emit('rematchResult', agreed);
+        }
     });
 
     socket.on('leaveRoom', (roomId) => {
-        handleLeaveRoom(socket, roomId);
+        const sId = socketToSession[socket.id];
+        handleLeaveRoom(sId, roomId);
     });
 
     socket.on('disconnect', () => {
-        console.log('User disconnected:', socket.id);
-        for (const roomId in rooms) {
-            if (rooms[roomId].host === socket.id || rooms[roomId].guest === socket.id) {
-                handleLeaveRoom(socket, roomId);
+        const sId = socketToSession[socket.id];
+        console.log('User disconnected:', socket.id, 'Session:', sId);
+        if (sId && users[sId]) {
+            const roomId = users[sId].roomId;
+            if (roomId && rooms[roomId]) {
+                const room = rooms[roomId];
+                const opponentSessionId = room.host === sId ? room.guest : room.host;
+                if (opponentSessionId && users[opponentSessionId]) {
+                    io.to(users[opponentSessionId].socketId).emit('opponentDisconnected', { timeout: 60 });
+                }
+
+                // Start 60s timer
+                users[sId].disconnectTimer = setTimeout(() => {
+                    console.log('Session expired, cleaning up:', sId);
+                    handleLeaveRoom(sId, roomId);
+                    delete users[sId];
+                }, 60000);
+            } else {
+                // Not in a room, safe to delete immediately
+                delete users[sId];
             }
         }
-        delete users[socket.id];
+        delete socketToSession[socket.id];
     });
 
-    function handleLeaveRoom(socket, roomId) {
+    function handleLeaveRoom(sId, roomId) {
         const room = rooms[roomId];
         if (!room) return;
 
-        socket.leave(roomId);
-        if (room.host === socket.id) {
+        if (users[sId]) {
+            const socketId = users[sId].socketId;
+            const socket = io.sockets.sockets.get(socketId);
+            if (socket) socket.leave(roomId);
+            users[sId].roomId = null;
+        }
+
+        if (room.host === sId) {
             if (room.guest) {
-                io.to(room.guest).emit('opponentLeft');
+                const guestUser = users[room.guest];
+                if (guestUser) {
+                    io.to(guestUser.socketId).emit('opponentLeft');
+                    guestUser.roomId = null;
+                }
             }
             delete rooms[roomId];
-        } else if (room.guest === socket.id) {
-            io.to(room.host).emit('opponentLeft');
+        } else if (room.guest === sId) {
+            const hostUser = users[room.host];
+            if (hostUser) {
+                io.to(hostUser.socketId).emit('opponentLeft');
+            }
             room.guest = null;
             room.status = 'waiting';
             room.board = initGameBoard(room.size);

@@ -51,7 +51,11 @@ export class Game {
                 this.ui.elements.chkForbidden.checked = data.forbidden;
                 
                 this.startGame(true);
-                this.ui.showAlert('对战开始！你是' + (this.myRole === 1 ? '黑子' : '白子'));
+                if (!data.isReconnect) {
+                    this.ui.showAlert('对战开始！你是' + (this.myRole === 1 ? '黑子' : '白子'));
+                } else {
+                    this.ui.updateStatus('已重连回游戏', "#27ae60");
+                }
             },
             onGameStateUpdate: (state) => {
                 const isMyMove = state.lastMove && state.lastMove.role === this.myRole;
@@ -59,7 +63,8 @@ export class Game {
                 
                 this.previousState = null; // Clear optimistic state
                 this.board = state.board;
-                this.historyMoves = state.history;
+                // Convert history format if needed (server sends {r, c, role}, client uses {x, y, role})
+                this.historyMoves = state.history.map(m => ({ x: m.r, y: m.c, role: m.role }));
                 this.me = (state.turn === 1);
                 this.over = state.over;
                 
@@ -80,6 +85,13 @@ export class Game {
             onOpponentLeft: () => {
                 this.ui.showAlert('对手已离开房间，正在返回大厅...');
                 this.backToLobby();
+            },
+            onOpponentDisconnected: (data) => {
+                this.ui.updateStatus(`对方已断开，等待重连 (${data.timeout}s)...`, "#f39c12");
+            },
+            onOpponentReconnected: () => {
+                this.ui.updateStatus('对方已重连', "#27ae60");
+                setTimeout(() => this.updateStatus(), 2000);
             },
             onErrorMsg: (msg) => {
                 this.ui.showAlert(msg);
