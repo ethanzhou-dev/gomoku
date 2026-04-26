@@ -259,13 +259,24 @@ function initBoard() {
 
 function drawBoard() {
     const rect = canvas.getBoundingClientRect();
-    const maxSize = rect.width || Math.min(450, canvas.parentElement.clientWidth - 12);
+    const parentWidth = canvas.parentElement ? canvas.parentElement.clientWidth : 0;
+    let maxSize = rect.width || Math.min(450, parentWidth - 12);
     
+    // 如果拿到的是无效尺寸（如在后台），直接返回，不要将 canvas 设置为 0 宽高
+    if (maxSize <= 0) return;
+
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = maxSize * dpr;
-    canvas.height = maxSize * dpr;
+    const targetWidth = Math.round(maxSize * dpr);
     
-    ctx.scale(dpr, dpr);
+    // 关键优化：只有尺寸真正改变时才设置 canvas.width/height
+    // 这样可以避免在动画过程中每一帧都清空画布属性，提高性能并解决闪烁/消失问题
+    if (canvas.width !== targetWidth || canvas.height !== targetWidth) {
+        canvas.width = targetWidth;
+        canvas.height = targetWidth;
+    }
+    
+    // 重置变换矩阵并应用缩放，确保无论 canvas 是否重置，坐标系统都正确
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, maxSize, maxSize);
     
     // n根线意味着有n-1个格子间距。总宽度 = (n - 1) * cellSize + 2 * margin
@@ -856,8 +867,18 @@ window.addEventListener('resize', () => {
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
         // 当页面从后台重新变为可见时，重绘棋盘
-        // 可以加上少量延时以确保容器尺寸已经恢复
-        setTimeout(drawBoard, 100);
+        // 增加重试机制，确保在尺寸恢复后重绘，解决部分浏览器恢复标签页时尺寸报告为 0 的问题
+        let attempts = 0;
+        const checkAndDraw = () => {
+            const rect = canvas.getBoundingClientRect();
+            if (rect.width > 0 || attempts > 5) {
+                drawBoard();
+            } else {
+                attempts++;
+                setTimeout(checkAndDraw, 100);
+            }
+        };
+        setTimeout(checkAndDraw, 100);
     }
 });
 
