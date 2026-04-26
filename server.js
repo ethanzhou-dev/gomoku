@@ -282,7 +282,6 @@ io.on('connection', (socket) => {
         if (room.host === socket.id) {
             if (room.guest) {
                 io.to(room.guest).emit('opponentLeft');
-                // Don't leave room yet, let guest decide? No, usually room closes if host leaves.
             }
             delete rooms[roomId];
         } else if (room.guest === socket.id) {

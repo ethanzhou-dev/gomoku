@@ -70,11 +70,16 @@ export class Game {
                 this.renderer.drawBoard(this.board, this.historyMoves, this.hintPos, this.me);
             },
             onOpponentLeft: () => {
-                this.ui.showAlert('对手已离开房间！');
-                this.over = true;
-                this.updateStatus();
+                this.ui.showAlert('对手已离开房间，正在返回大厅...');
+                this.backToLobby();
             },
-            onErrorMsg: (msg) => this.ui.showAlert(msg),
+            onErrorMsg: (msg) => {
+                this.ui.showAlert(msg);
+                // 如果是加入失败等错误，确保回到列表
+                if (msg.includes('不存在') || msg.includes('已满')) {
+                    this.backToLobby();
+                }
+            },
             onUndoRequested: () => {
                 if (confirm("对方请求悔棋，是否同意？")) {
                     this.network.emit('undoResponse', { roomId: this.currentRoomId, agreed: true });
@@ -334,11 +339,26 @@ export class Game {
 
     handleRestart() {
         if (this.isOnline) {
-            if (this.over) this.network.emit('rematchRequest', this.currentRoomId);
-            else if (confirm("确定要退出房间吗？")) this.leaveOnlineGame();
+            // 如果游戏已经结束，且对手可能已经离开了，则跳转回大厅
+            // 或者通过 UI 状态判断：如果按钮文字是“再来一局”，发送重连请求
+            if (this.over) {
+                this.network.emit('rematchRequest', this.currentRoomId);
+            } else if (confirm("确定要退出房间吗？")) {
+                this.backToLobby();
+            }
         } else {
             this.startGame();
         }
+    }
+
+    backToLobby() {
+        this.network.emit('leaveRoom', this.currentRoomId);
+        this.currentRoomId = null;
+        this.isOnline = true; // 保持在线模式
+        this.ui.hideModal('modalWaiting');
+        this.ui.showModal('modalRoomList');
+        this.network.emit('getRoomList');
+        this.startGame(true); // 重置棋盘但保持联网 UI 状态
     }
 
     handleUndo() {
