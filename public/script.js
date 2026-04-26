@@ -834,6 +834,14 @@ window.addEventListener('resize', () => {
     window.resizeTimer = setTimeout(drawBoard, 200);
 });
 
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        // 当页面从后台重新变为可见时，重绘棋盘
+        // 可以加上少量延时以确保容器尺寸已经恢复
+        setTimeout(drawBoard, 100);
+    }
+});
+
 function startGame() {
     if (!isOnline) {
         if(opponentInfo) opponentInfo.style.display = 'none';
