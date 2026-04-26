@@ -29,6 +29,11 @@ export class Game {
         this.setupEventListeners();
         this.ui.syncModeUI();
         this.startGame();
+
+        // 自动重连逻辑：如果刷新前是在线模式，加载时自动连接网络
+        if (this.settings.mode === 'pvp' && this.settings.pvpType === 'online') {
+            this.enterOnlineMode();
+        }
     }
 
     getNetworkCallbacks() {
