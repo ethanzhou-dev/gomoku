@@ -93,7 +93,39 @@ function checkForbidden(currentBoard, r, c, size) {
     return null;
 }
 
-// 导出模块（兼容 worker 和浏览器）
+/**
+ * 判断是否连成五子
+ * @param {Array} board 棋盘状态
+ * @param {number} r 行坐标
+ * @param {number} c 列坐标
+ * @param {number} role 玩家 (1 或 2)
+ * @param {number} size 棋盘大小
+ * @returns {boolean}
+ */
+function checkWin(board, r, c, role, size) {
+    const dirs = [[1, 0], [0, 1], [1, 1], [1, -1]];
+    for (let dir of dirs) {
+        let count = 1;
+        for (let sign of [1, -1]) {
+            for (let i = 1; i <= 4; i++) {
+                let nr = r + dir[0] * i * sign;
+                let nc = c + dir[1] * i * sign;
+                if (nr >= 0 && nr < size && nc >= 0 && nc < size && board[nr][nc] === role) {
+                    count++;
+                } else {
+                    break;
+                }
+            }
+        }
+        if (count >= 5) return true;
+    }
+    return false;
+}
+
+// 导出模块（兼容 worker、Node.js 和浏览器）
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { checkForbidden };
+    module.exports = { checkForbidden, checkWin };
+} else if (typeof self !== 'undefined') {
+    // Worker 或 浏览器
+    self.GomokuRules = { checkForbidden, checkWin };
 }
