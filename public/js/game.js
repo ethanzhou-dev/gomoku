@@ -87,14 +87,11 @@ export class Game {
                 this.backToLobby();
             },
             onOpponentDisconnected: (data) => {
-                this.opponentDisconnected = true;
-                this.ui.showAlert(`对方已断开，等待重连 (${data.timeout}s)...`);
-                this.ui.updateStatus(`等待对方重连...`, "#f39c12");
+                // Logic removed as per user request
             },
             onOpponentReconnected: () => {
-                this.opponentDisconnected = false;
                 this.ui.showAlert('对方已重连！');
-                this.ui.updateStatus('对方已重连', "#27ae60");
+                this.ui.updateStatus('对方已重连', "#2e7d32"); // Forest Green, more skeuomorphic
                 setTimeout(() => this.updateStatus(), 2000);
             },
             onErrorMsg: (msg) => {
@@ -445,7 +442,7 @@ export class Game {
     }
 
     updateStatus() {
-        if (this.over || this.opponentDisconnected) return;
+        if (this.over) return;
         const colorStr = this.me ? '黑子' : '白子';
         let text = "";
         if (this.isOnline) {

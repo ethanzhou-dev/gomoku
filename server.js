@@ -365,9 +365,8 @@ io.on('connection', (socket) => {
                 if (roomId && rooms[roomId]) {
                     const room = rooms[roomId];
                     
-                    // Notify everyone else in the room
-                    socket.to(roomId).emit('opponentDisconnected', { timeout: 60 });
-
+                    // Disconnected notification removed as per user request
+                    
                     // 启动 60s 清理计时器
                     users[sId].disconnectTimer = setTimeout(() => {
                         console.log('Session expired, cleaning up:', sId);
