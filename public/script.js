@@ -1109,7 +1109,9 @@ function setupSocketEvents() {
     socket.on('rematchRequested', () => {
         if (confirm("对方请求再来一局，是否同意？")) {
             socket.emit('rematchResponse', { roomId: currentRoomId, agreed: true });
+            myRole = myRole === 1 ? 2 : 1;
             startGame();
+            showAlert('对战开始！你是' + (myRole === 1 ? '黑子' : '白子'));
         } else {
             socket.emit('rematchResponse', { roomId: currentRoomId, agreed: false });
         }
@@ -1117,7 +1119,8 @@ function setupSocketEvents() {
 
     socket.on('rematchResult', (agreed) => {
         if (agreed) {
-            showAlert('对方同意再来一局！');
+            myRole = myRole === 1 ? 2 : 1;
+            showAlert('对方同意再来一局！你是' + (myRole === 1 ? '黑子' : '白子'));
             startGame();
         } else {
             showAlert('对方拒绝了再来一局的请求。');
