@@ -157,42 +157,37 @@ function syncModeUI() {
     }
 }
 
+let initialSettingsState = {};
+
 window.addEventListener('DOMContentLoaded', () => {
     loadSettings();
     
     btnSettings.onclick = () => {
         loadSettings(); // 重新加载以重置未保存的更改
         syncModeUI();
+        initialSettingsState = {
+            playerColor: document.querySelector('input[name="playerColor"]:checked')?.value,
+            forbidden: chkForbidden.checked,
+            boardSize: document.querySelector('input[name="boardSize"]:checked')?.value,
+            mode: document.querySelector('input[name="mode"]:checked')?.value,
+            difficulty: document.querySelector('input[name="difficulty"]:checked')?.value,
+            pvpType: document.querySelector('input[name="pvpType"]:checked')?.value
+        };
         modalSettings.style.display = 'flex';
     };
     
     btnCloseSettings.onclick = () => {
         modalSettings.style.display = 'none';
         
-        const checkedColor = document.querySelector('input[name="playerColor"]:checked');
-        const newPlayerColor = checkedColor ? parseInt(checkedColor.value) : window.playerColor;
-        
-        const newForbidden = chkForbidden.checked;
-        
-        const checkedSize = document.querySelector('input[name="boardSize"]:checked');
-        const newSize = checkedSize ? parseInt(checkedSize.value) : window.n;
-        
-        const checkedMode = document.querySelector('input[name="mode"]:checked');
-        const newMode = checkedMode ? checkedMode.value : (window.isPvE ? 'pve' : 'pvp');
-        
-        const checkedDiff = document.querySelector('input[name="difficulty"]:checked');
-        const newDiff = checkedDiff ? parseInt(checkedDiff.value) : window.aiDepth;
-        
-        const checkedPvpType = document.querySelector('input[name="pvpType"]:checked');
-        const newPvpType = checkedPvpType ? checkedPvpType.value : 'local';
-        
         let changed = false;
-        if (newPlayerColor !== window.playerColor) changed = true;
-        if (newForbidden !== (localStorage.getItem('gomoku_forbidden') === 'true')) changed = true;
-        if (newSize !== window.n) changed = true;
-        if ((newMode === 'pve') !== window.isPvE) changed = true;
-        if (newDiff !== window.aiDepth) changed = true;
-        if (newPvpType !== (localStorage.getItem('gomoku_pvpType') || 'local')) changed = true;
+        if (initialSettingsState.playerColor !== document.querySelector('input[name="playerColor"]:checked')?.value) changed = true;
+        if (initialSettingsState.forbidden !== chkForbidden.checked) changed = true;
+        if (initialSettingsState.boardSize !== document.querySelector('input[name="boardSize"]:checked')?.value) changed = true;
+        const newMode = document.querySelector('input[name="mode"]:checked')?.value;
+        if (initialSettingsState.mode !== newMode) changed = true;
+        if (initialSettingsState.difficulty !== document.querySelector('input[name="difficulty"]:checked')?.value) changed = true;
+        const newPvpType = document.querySelector('input[name="pvpType"]:checked')?.value;
+        if (initialSettingsState.pvpType !== newPvpType) changed = true;
         
         if (changed) {
             saveSettings();
