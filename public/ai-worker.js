@@ -5578,8 +5578,7 @@
   var Cache = class {
     constructor(capacity = 1e6) {
       this.capacity = capacity;
-      this.cache = [];
-      this.map = /* @__PURE__ */ new Map();
+      this.map = new Map();
     }
     // 获取一个键的值
     get(key) {
@@ -5592,13 +5591,11 @@
     // 设置或插入一个值
     put(key, value) {
       if (!config.enableCache) return false;
-      if (this.cache.length >= this.capacity) {
-        const oldestKey = this.cache.shift();
+      if (this.map.size >= this.capacity) {
+        const oldestKey = this.map.keys().next().value;
         this.map.delete(oldestKey);
       }
-      if (!this.map.has(key)) {
-        this.cache.push(key);
-      }
+      this.map.delete(key);
       this.map.set(key, value);
     }
     // 检查缓存中是否存在某个键
@@ -6094,18 +6091,16 @@
     evaluate(role) {
       let blackScore = 0;
       let whiteScore = 0;
-      for (let i = 0; i < this.blackScores.length; i++) {
-        for (let j = 0; j < this.blackScores[i].length; j++) {
-          blackScore += this.blackScores[i][j];
+      const size = this.size;
+      for (let i = 0; i < size; i++) {
+        const bRow = this.blackScores[i];
+        const wRow = this.whiteScores[i];
+        for (let j = 0; j < size; j++) {
+          blackScore += bRow[j];
+          whiteScore += wRow[j];
         }
       }
-      for (let i = 0; i < this.whiteScores.length; i++) {
-        for (let j = 0; j < this.whiteScores[i].length; j++) {
-          whiteScore += this.whiteScores[i][j];
-        }
-      }
-      const score = role == 1 ? blackScore - whiteScore : whiteScore - blackScore;
-      return score;
+      return role == 1 ? blackScore - whiteScore : whiteScore - blackScore;
     }
     /**
      * 获取有价值的点位
@@ -6182,43 +6177,51 @@
     }
     isGameOver() {
       const hash = this.hash();
-      if (this.gameoverCache.get(hash)) {
-        return this.gameoverCache.get(hash);
+      const cached = this.gameoverCache.get(hash);
+      if (cached !== null) {
+        return cached;
       }
       if (this.getWinner() !== 0) {
         this.gameoverCache.put(hash, true);
         return true;
       }
-      for (let i = 0; i < this.size; i++) {
-        for (let j = 0; j < this.size; j++) {
-          if (this.board[i][j] === 0) {
-            this.gameoverCache.put(hash, false);
-            return false;
-          }
-        }
+      if (this.history.length === this.size * this.size) {
+        this.gameoverCache.put(hash, true);
+        return true;
       }
-      this.gameoverCache.put(hash, true);
-      return true;
+      this.gameoverCache.put(hash, false);
+      return false;
     }
     getWinner() {
       const hash = this.hash();
-      if (this.winnerCache.get(hash)) {
-        return this.winnerCache.get(hash);
+      const cached = this.winnerCache.get(hash);
+      if (cached !== null) {
+        return cached;
       }
-      let directions = [[1, 0], [0, 1], [1, 1], [1, -1]];
-      for (let i = 0; i < this.size; i++) {
-        for (let j = 0; j < this.size; j++) {
-          if (this.board[i][j] === 0) continue;
-          for (let direction of directions) {
-            let count = 0;
-            while (i + direction[0] * count >= 0 && i + direction[0] * count < this.size && j + direction[1] * count >= 0 && j + direction[1] * count < this.size && this.board[i + direction[0] * count][j + direction[1] * count] === this.board[i][j]) {
-              count++;
-            }
-            if (count >= 5) {
-              this.winnerCache.put(hash, this.board[i][j]);
-              return this.board[i][j];
-            }
-          }
+      if (this.history.length === 0) {
+        this.winnerCache.put(hash, 0);
+        return 0;
+      }
+      const lastMove = this.history[this.history.length - 1];
+      const role = lastMove.role;
+      const i = lastMove.i;
+      const j = lastMove.j;
+      const directions = [[1, 0], [0, 1], [1, 1], [1, -1]];
+      for (let d of directions) {
+        let count = 1;
+        let step = 1;
+        while (i + d[0] * step >= 0 && i + d[0] * step < this.size && j + d[1] * step >= 0 && j + d[1] * step < this.size && this.board[i + d[0] * step][j + d[1] * step] === role) {
+          count++;
+          step++;
+        }
+        step = 1;
+        while (i - d[0] * step >= 0 && i - d[0] * step < this.size && j - d[1] * step >= 0 && j - d[1] * step < this.size && this.board[i - d[0] * step][j - d[1] * step] === role) {
+          count++;
+          step++;
+        }
+        if (count >= 5) {
+          this.winnerCache.put(hash, role);
+          return role;
         }
       }
       this.winnerCache.put(hash, 0);
@@ -6406,34 +6409,26 @@
       if (!points.length) {
         return [board.evaluate(role), null, [...path]];
       }
-      for (let d = cDepth + 1; d <= depth; d += 1) {
-        if (d % 2 !== 0) continue;
-        let breakAll = false;
-        for (let i = 0; i < points.length; i++) {
-          const point = points[i];
-          board.put(point[0], point[1], role);
-          let newPath = [...path, point];
-          let [currentValue, currentMove, currentPath] = helper(board, -role, d, cDepth + 1, newPath, -beta, -alpha);
-          currentValue = -currentValue;
-          board.undo();
-          if (currentValue >= FIVE || d === depth) {
-            if (currentValue > value || currentValue <= -FIVE && value <= -FIVE && currentPath.length > bestDepth) {
-              value = currentValue;
-              move = point;
-              bestPath = currentPath;
-              bestDepth = currentPath.length;
-            }
-          }
-          alpha = Math.max(alpha, value);
-          if (alpha >= FIVE) {
-            breakAll = true;
-            break;
-          }
-          if (alpha >= beta) {
-            break;
-          }
+      let breakAll = false;
+      for (let i = 0; i < points.length; i++) {
+        const point = points[i];
+        board.put(point[0], point[1], role);
+        let newPath = [...path, point];
+        let [currentValue, currentMove, currentPath] = helper(board, -role, depth, cDepth + 1, newPath, -beta, -alpha);
+        currentValue = -currentValue;
+        board.undo();
+        if (currentValue > value || (currentValue <= -FIVE && value <= -FIVE && currentPath.length > bestDepth)) {
+          value = currentValue;
+          move = point;
+          bestPath = currentPath;
+          bestDepth = currentPath.length;
         }
-        if (breakAll) {
+        alpha = Math.max(alpha, value);
+        if (alpha >= FIVE) {
+          breakAll = true;
+          break;
+        }
+        if (alpha >= beta) {
           break;
         }
       }
