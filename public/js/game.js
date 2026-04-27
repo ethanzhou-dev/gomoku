@@ -166,7 +166,17 @@ export class Game {
         this.ui.elements.btnLeaveWaiting.onclick = () => this.leaveOnlineGame();
         this.ui.elements.btnAlertOk.onclick = () => this.ui.hideAlert();
         
-        window.addEventListener('resize', () => this.drawBoard());
+        window.addEventListener('resize', () => {
+            this.renderer.lastTargetWidth = 0;
+            this.drawBoard();
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                this.renderer.lastTargetWidth = 0;
+                this.drawBoard();
+            }
+        });
     }
 
     loadSettings() {
