@@ -1,22 +1,21 @@
 import { Renderer } from './renderer.js';
 import { UI } from './ui.js';
 import { Network } from './network.js';
+import { GameStateManager } from './gameState.js';
 
 export class Game {
     constructor() {
         this.ui = new UI();
-        this.renderer = new Renderer(this.ui.elements.canvas, 15);
+        this.settings = this.loadSettings();
+        
+        this.gameState = new GameStateManager(this.settings.boardSize);
+        this.renderer = new Renderer(this.ui.elements.canvasBg, this.ui.elements.canvas, this.settings.boardSize);
         this.network = new Network(this.getNetworkCallbacks());
         
-        this.board = [];
-        this.historyMoves = [];
-        this.me = true; // Whose turn (local or logic)
-        this.over = false;
         this.hintPos = null;
         this.isOnline = false;
         this.myRole = null; // 1 or 2
         this.currentRoomId = null;
-        this.settings = this.loadSettings();
         
         this.aiWorker = null;
         this.isAILoading = false;
@@ -50,7 +49,6 @@ export class Game {
                 this.ui.hideModal('modalRoomList');
                 this.currentRoomId = data.roomId;
                 this.myRole = (this.network.socket.id === data.hostId) ? 1 : 2;
-                this.renderer.setBoardSize(data.size);
                 this.settings.boardSize = data.size;
                 this.settings.forbidden = data.forbidden;
                 this.ui.elements.chkForbidden.checked = data.forbidden;
@@ -64,28 +62,24 @@ export class Game {
             },
             onGameStateUpdate: (state) => {
                 const isMyMove = state.lastMove && state.lastMove.role === this.myRole;
-                const wasOver = this.over;
+                const wasOver = this.gameState.over;
                 
                 this.previousState = null; // Clear optimistic state
-                this.board = state.board;
-                // Convert history format if needed (server sends {r, c, role}, client uses {x, y, role})
-                this.historyMoves = state.history.map(m => ({ x: m.r, y: m.c, role: m.role }));
-                this.me = (state.turn === 1);
-                this.over = state.over;
+                this.gameState.setState(state);
                 
                 // Only animate if it's the opponent's move
                 if (state.lastMove && !isMyMove) {
                     this.renderer.animateMove(state.lastMove.r, state.lastMove.c, state.lastMove.role);
                 }
                 
-                if (this.over) {
+                if (this.gameState.over) {
                     if (!wasOver) {
-                        this.handleGameOver(state.winner);
+                        this.handleGameOver(this.gameState.winner);
                     }
                 } else {
                     this.updateStatus();
                 }
-                this.renderer.drawBoard(this.board, this.historyMoves, this.hintPos, this.me);
+                this.drawBoard();
             },
             onOpponentLeft: () => {
                 this.ui.showAlert('对手已离开房间，正在返回大厅...');
@@ -104,12 +98,9 @@ export class Game {
                 
                 // Rollback optimistic state if a move error occurred
                 if (this.previousState && (msg.includes('禁手') || msg.includes('不符合规则') || msg.includes('不是你的回合'))) {
-                    this.board = this.previousState.board;
-                    this.historyMoves = this.previousState.historyMoves;
-                    this.me = this.previousState.me;
-                    this.over = this.previousState.over;
+                    this.gameState.setState(this.previousState);
                     this.previousState = null;
-                    this.renderer.drawBoard(this.board, this.historyMoves, this.hintPos, this.me);
+                    this.drawBoard();
                     this.updateStatus();
                 }
 
@@ -175,7 +166,7 @@ export class Game {
         this.ui.elements.btnLeaveWaiting.onclick = () => this.leaveOnlineGame();
         this.ui.elements.btnAlertOk.onclick = () => this.ui.hideAlert();
         
-        window.addEventListener('resize', () => this.renderer.drawBoard(this.board, this.historyMoves, this.hintPos, this.me));
+        window.addEventListener('resize', () => this.drawBoard());
     }
 
     loadSettings() {
@@ -202,7 +193,6 @@ export class Game {
 
     closeSettings() {
         const newSettings = this.ui.getSettings();
-        // 简单对比是否发生实质变化
         const modeChanged = this.settings.mode !== newSettings.mode;
         const typeChanged = this.settings.pvpType !== newSettings.pvpType;
         const sizeChanged = this.settings.boardSize !== newSettings.boardSize;
@@ -215,12 +205,10 @@ export class Game {
         this.ui.hideModal('modalSettings');
         
         if (this.settings.mode === 'pvp' && this.settings.pvpType === 'online') {
-            // 如果切到了联网模式，且当前并不是在联网状态（或者就是想刷出房间列表）
             if (!this.isOnline || modeChanged || typeChanged) {
                 this.enterOnlineMode();
             }
         } else {
-            // 如果是 PVE 或 本地 PVP
             if (modeChanged || typeChanged || sizeChanged || colorChanged || forbiddenChanged || (this.settings.mode === 'pve' && diffChanged)) {
                 this.isOnline = false;
                 this.network.disconnect();
@@ -229,20 +217,16 @@ export class Game {
         }
     }
 
+    drawBoard() {
+        this.renderer.drawBoard(this.gameState.board, this.gameState.historyMoves, this.hintPos, this.gameState.me);
+    }
+
     startGame(isOnline = false) {
         this.isOnline = isOnline;
-        this.over = false;
-        this.opponentDisconnected = false;
-        this.board = [];
-        for (let i = 0; i < this.settings.boardSize; i++) {
-            this.board[i] = new Array(this.settings.boardSize).fill(0);
-        }
-        this.historyMoves = [];
-        this.me = true;
-        this.hintPos = null;
+        this.gameState.init(this.settings.boardSize);
         this.renderer.setBoardSize(this.settings.boardSize);
+        this.hintPos = null;
         
-        // 重置所有按钮显示状态
         this.ui.elements.btnRestart.style.display = 'inline-block';
         this.ui.elements.btnUndo.style.display = 'inline-block';
         this.ui.elements.btnHint.style.display = 'inline-block';
@@ -258,7 +242,7 @@ export class Game {
         }
 
         this.updateStatus();
-        this.renderer.drawBoard(this.board, this.historyMoves, this.hintPos, this.me);
+        this.drawBoard();
 
         if (this.settings.mode === 'pve' && this.settings.playerColor === 2) {
             this.triggerAI();
@@ -266,7 +250,7 @@ export class Game {
     }
 
     handleCanvasClick(e) {
-        if (this.over || this.isAILoading) return;
+        if (this.gameState.over || this.isAILoading) return;
         
         const rect = this.ui.elements.canvas.getBoundingClientRect();
         const scaleX = this.ui.elements.canvas.width / rect.width / (window.devicePixelRatio || 1);
@@ -278,21 +262,14 @@ export class Game {
         const i = Math.round((x - this.renderer.margin) / this.renderer.cellSize);
         const j = Math.round((y - this.renderer.margin) / this.renderer.cellSize);
 
-        if (i >= 0 && i < this.settings.boardSize && j >= 0 && j < this.settings.boardSize && this.board[i][j] === 0) {
+        if (i >= 0 && i < this.settings.boardSize && j >= 0 && j < this.settings.boardSize && this.gameState.board[i][j] === 0) {
             if (this.isOnline) {
-                const currentRole = this.me ? 1 : 2;
+                const currentRole = this.gameState.me ? 1 : 2;
                 if (currentRole === this.myRole) {
-                    // Optimistic update: Save state for rollback
-                    this.previousState = {
-                        board: JSON.parse(JSON.stringify(this.board)),
-                        historyMoves: [...this.historyMoves],
-                        me: this.me,
-                        over: this.over
-                    };
+                    this.previousState = this.gameState.cloneState();
                     
-                    // Local forbidden check for immediate feedback
                     if (currentRole === 1 && this.settings.forbidden) {
-                        const msg = GomokuRules.checkForbidden(this.board, i, j, this.settings.boardSize);
+                        const msg = GomokuRules.checkForbidden(this.gameState.board, i, j, this.settings.boardSize);
                         if (msg) {
                             this.ui.updateStatus(`禁手：${msg}`, "#c0392b");
                             this.previousState = null;
@@ -304,9 +281,8 @@ export class Game {
                     this.network.emit('requestMove', { roomId: this.currentRoomId, r: i, c: j });
                 }
             } else {
-                // Local or PvE move
-                if (this.me && this.settings.forbidden) {
-                    const msg = GomokuRules.checkForbidden(this.board, i, j, this.settings.boardSize);
+                if (this.gameState.me && this.settings.forbidden) {
+                    const msg = GomokuRules.checkForbidden(this.gameState.board, i, j, this.settings.boardSize);
                     if (msg) {
                         this.ui.updateStatus(`禁手：${msg}`, "#c0392b");
                         return;
@@ -318,29 +294,28 @@ export class Game {
     }
 
     executeMove(i, j) {
-        const role = this.me ? 1 : 2;
-        this.board[i][j] = role;
-        this.historyMoves.push({ x: i, y: j, role });
+        const role = this.gameState.executeMove(i, j);
         this.renderer.animateMove(i, j, role);
         this.hintPos = null;
 
-        if (GomokuRules.checkWin(this.board, i, j, role, this.settings.boardSize)) {
-            this.over = true;
+        if (GomokuRules.checkWin(this.gameState.board, i, j, role, this.settings.boardSize)) {
+            this.gameState.over = true;
+            this.gameState.winner = role;
             this.handleGameOver(role);
-        } else if (this.historyMoves.length === this.settings.boardSize * this.settings.boardSize) {
-            this.over = true;
+        } else if (this.gameState.historyMoves.length === this.settings.boardSize * this.settings.boardSize) {
+            this.gameState.over = true;
+            this.gameState.winner = 0;
             this.handleGameOver(0);
         } else {
-            this.me = !this.me;
             this.updateStatus();
-            if (this.settings.mode === 'pve' && !this.over) {
-                const nextRole = this.me ? 1 : 2;
+            if (this.settings.mode === 'pve' && !this.gameState.over) {
+                const nextRole = this.gameState.me ? 1 : 2;
                 if (nextRole !== this.settings.playerColor) {
                     this.triggerAI();
                 }
             }
         }
-        this.renderer.drawBoard(this.board, this.historyMoves, this.hintPos, this.me);
+        this.drawBoard();
     }
 
     triggerAI(isHint = false) {
@@ -348,58 +323,43 @@ export class Game {
         this.ui.updateStatus(isHint ? "获取提示中..." : "AI思考中...");
         
         const startTime = Date.now();
-        const minDelay = 500; // 500ms minimum delay
+        const minDelay = 500; 
 
         if (!this.aiWorker) {
             this.aiWorker = new Worker('ai-worker.js');
-            this.aiWorker.onmessage = (e) => {
-                const timeTaken = Date.now() - startTime;
-                const remainingDelay = Math.max(0, minDelay - timeTaken);
-
-                setTimeout(() => {
-                    this.isAILoading = false;
-                    if (e.data.isHint) {
-                        this.hintPos = { x: e.data.r, y: e.data.c, start: performance.now() };
-                        this.renderer.drawBoard(this.board, this.historyMoves, this.hintPos, this.me);
-                    } else {
-                        this.executeMove(e.data.r, e.data.c);
-                    }
-                    this.updateStatus();
-                }, remainingDelay);
-            };
+            this.aiWorker.onmessage = this.handleAIMessage.bind(this, startTime, minDelay);
         } else {
-            // Re-bind onmessage to use current startTime if worker already exists
-            this.aiWorker.onmessage = (e) => {
-                const timeTaken = Date.now() - startTime;
-                const remainingDelay = Math.max(0, minDelay - timeTaken);
-
-                setTimeout(() => {
-                    this.isAILoading = false;
-                    if (e.data.isHint) {
-                        this.hintPos = { x: e.data.r, y: e.data.c, start: performance.now() };
-                        this.renderer.drawBoard(this.board, this.historyMoves, this.hintPos, this.me);
-                    } else {
-                        this.executeMove(e.data.r, e.data.c);
-                    }
-                    this.updateStatus();
-                }, remainingDelay);
-            };
+            this.aiWorker.onmessage = this.handleAIMessage.bind(this, startTime, minDelay);
         }
 
         this.aiWorker.postMessage({
-            board: this.board,
+            board: this.gameState.board,
             depth: this.settings.difficulty,
-            aiRole: this.me ? 1 : 2,
+            aiRole: this.gameState.me ? 1 : 2,
             forbidden: this.settings.forbidden,
             isHint: isHint
         });
     }
 
+    handleAIMessage(startTime, minDelay, e) {
+        const timeTaken = Date.now() - startTime;
+        const remainingDelay = Math.max(0, minDelay - timeTaken);
+
+        setTimeout(() => {
+            this.isAILoading = false;
+            if (e.data.isHint) {
+                this.hintPos = { x: e.data.r, y: e.data.c, start: performance.now() };
+                this.drawBoard();
+            } else {
+                this.executeMove(e.data.r, e.data.c);
+            }
+            this.updateStatus();
+        }, remainingDelay);
+    }
+
     handleRestart() {
         if (this.isOnline) {
-            // 如果游戏已经结束，且对手可能已经离开了，则跳转回大厅
-            // 或者通过 UI 状态判断：如果按钮文字是“再来一局”，发送重连请求
-            if (this.over) {
+            if (this.gameState.over) {
                 this.network.emit('rematchRequest', this.currentRoomId);
             } else if (confirm("确定要退出房间吗？")) {
                 this.backToLobby();
@@ -412,28 +372,24 @@ export class Game {
     backToLobby() {
         this.network.emit('leaveRoom', this.currentRoomId);
         this.currentRoomId = null;
-        this.isOnline = true; // 保持在线模式
+        this.isOnline = true;
         this.ui.hideModal('modalWaiting');
         this.ui.showModal('modalRoomList');
         this.network.emit('getRoomList');
-        this.startGame(true); // 重置棋盘但保持联网 UI 状态
+        this.startGame(true); 
     }
 
     handleUndo() {
         if (this.isOnline) {
             this.network.emit('undoRequest', this.currentRoomId);
         } else {
-            if (this.historyMoves.length === 0 || this.isAILoading) return;
-            this.over = false;
-            let last = this.historyMoves.pop();
-            this.board[last.x][last.y] = 0;
-            if (this.settings.mode === 'pve' && this.historyMoves.length > 0) {
-                last = this.historyMoves.pop();
-                this.board[last.x][last.y] = 0;
+            if (this.gameState.historyMoves.length === 0 || this.isAILoading) return;
+            this.gameState.undoMove();
+            if (this.settings.mode === 'pve' && this.gameState.historyMoves.length > 0) {
+                this.gameState.undoMove();
             }
-            this.me = (this.historyMoves.length % 2 === 0);
             this.updateStatus();
-            this.renderer.drawBoard(this.board, this.historyMoves, this.hintPos, this.me);
+            this.drawBoard();
         }
     }
 
@@ -441,25 +397,25 @@ export class Game {
         if (this.isOnline) {
             this.network.emit('drawRequest', this.currentRoomId);
         } else {
-            if (this.over || this.isAILoading || this.historyMoves.length === 0) return;
+            if (this.gameState.over || this.isAILoading || this.gameState.historyMoves.length === 0) return;
             this.triggerAI(true);
         }
     }
 
     updateStatus() {
-        if (this.over) return;
-        const colorStr = this.me ? '黑子' : '白子';
+        if (this.gameState.over) return;
+        const colorStr = this.gameState.me ? '黑子' : '白子';
         let text = "";
         if (this.isOnline) {
-            const isMyTurn = (this.me ? 1 : 2) === this.myRole;
+            const isMyTurn = (this.gameState.me ? 1 : 2) === this.myRole;
             text = `轮到 ${isMyTurn ? '你' : '对方'} (${colorStr})`;
         } else if (this.settings.mode === 'pve') {
-            const isMyTurn = (this.me ? 1 : 2) === this.settings.playerColor;
+            const isMyTurn = (this.gameState.me ? 1 : 2) === this.settings.playerColor;
             text = `轮到 ${isMyTurn ? '你' : 'AI'} (${colorStr})`;
         } else {
             text = `轮到 ${colorStr}`;
         }
-        this.ui.updateStatus(text, this.me ? "#2c3e50" : "#c0392b");
+        this.ui.updateStatus(text, this.gameState.me ? "#2c3e50" : "#c0392b");
     }
 
     handleGameOver(winner) {
@@ -478,10 +434,10 @@ export class Game {
         
         if (this.isOnline) {
             this.ui.elements.btnRestart.innerText = "再来一局";
-            this.ui.elements.btnUndo.style.display = 'none'; // 隐藏悔棋
-            this.ui.elements.btnHint.style.display = 'none'; // 隐藏和棋
-            this.ui.elements.btnHome.style.display = 'inline-block'; // 显示返回首页
-            this.ui.elements.btnSettings.style.display = 'none'; // 隐藏设置
+            this.ui.elements.btnUndo.style.display = 'none'; 
+            this.ui.elements.btnHint.style.display = 'none'; 
+            this.ui.elements.btnHome.style.display = 'inline-block'; 
+            this.ui.elements.btnSettings.style.display = 'none'; 
         }
     }
 
@@ -489,7 +445,7 @@ export class Game {
         const nickname = localStorage.getItem('gomoku_nickname');
         if (!nickname) this.ui.showModal('modalNickname');
         else {
-            this.network.connect(nickname, { total: 0, win: 0 }); // Fetch actual stats later if needed
+            this.network.connect(nickname, { total: 0, win: 0 });
             this.ui.elements.currentNicknameSpan.innerText = nickname;
             this.ui.showModal('modalRoomList');
         }
@@ -511,6 +467,11 @@ export class Game {
     }
 
     leaveOnlineGame() {
+        if (this.aiWorker) {
+            this.aiWorker.terminate();
+            this.aiWorker = null;
+            this.isAILoading = false;
+        }
         this.network.emit('leaveRoom', this.currentRoomId);
         this.network.disconnect();
         this.isOnline = false;

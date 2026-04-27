@@ -20,6 +20,7 @@ export class UI {
             alertMsg: document.getElementById('alert-msg'),
             btnAlertOk: document.getElementById('btn-alert-ok'),
             alertTitle: document.getElementById('alert-title'),
+            canvasBg: document.getElementById('chessBoardBg'),
             canvas: document.getElementById('chessBoard'),
             statusDiv: document.getElementById('status'),
             btnRestart: document.getElementById('btn-restart'),
