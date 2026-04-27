@@ -167,16 +167,32 @@ export class Game {
         this.ui.elements.btnAlertOk.onclick = () => this.ui.hideAlert();
         
         window.addEventListener('resize', () => {
-            this.renderer.lastTargetWidth = 0;
+            this.renderer.forceRedraw();
             this.drawBoard();
         });
 
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
-                this.renderer.lastTargetWidth = 0;
-                this.drawBoard();
+                // 延迟一下，确保浏览器完成切回应用的布局和资源恢复
+                setTimeout(() => {
+                    this.renderer.forceRedraw();
+                    this.drawBoard();
+                }, 100);
             }
         });
+
+        // 监听 canvas 上下文丢失和恢复事件
+        const handleContextRestored = () => {
+            console.log('Canvas context restored');
+            this.renderer.forceRedraw();
+            this.drawBoard();
+        };
+        
+        this.ui.elements.canvas.addEventListener('webglcontextrestored', handleContextRestored);
+        this.ui.elements.canvasBg.addEventListener('webglcontextrestored', handleContextRestored);
+        // 对于 2D context
+        this.ui.elements.canvas.addEventListener('contextrestored', handleContextRestored);
+        this.ui.elements.canvasBg.addEventListener('contextrestored', handleContextRestored);
     }
 
     loadSettings() {

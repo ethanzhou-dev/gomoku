@@ -17,6 +17,10 @@ export class Renderer {
         this.lastTargetWidth = 0; // force redraw bg
     }
 
+    forceRedraw() {
+        this.lastTargetWidth = 0;
+    }
+
     drawBoard(board, historyMoves, hintPos, me) {
         if (this.animationFrameId) {
             cancelAnimationFrame(this.animationFrameId);
@@ -33,6 +37,7 @@ export class Renderer {
         const targetWidth = Math.round(maxSize * dpr);
         
         let needsBgRedraw = false;
+        // 如果 canvas 的实际像素宽度与目标不符，或者记录的最后宽度不符，都需要重绘背景
         if (this.bgCanvas.width !== targetWidth || this.lastTargetWidth !== targetWidth) {
             this.bgCanvas.width = targetWidth;
             this.bgCanvas.height = targetWidth;
