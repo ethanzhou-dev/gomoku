@@ -5,6 +5,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>经典五子棋</title>
+    <style>
+        /* 关键渲染路径优化：将最终的渐变背景直接挂载到 html 根节点 */
+        html {
+            background-color: #2c3e50;
+            background-image: radial-gradient(circle, #44596e, #1a252f);
+            height: 100%;
+        }
+    </style>
     <link rel="preload" href="simkai-lite.ttf" as="font" type="font/ttf" crossorigin>
     <!-- 使用本地内置楷体 -->
     <link rel="stylesheet" href="style.css">

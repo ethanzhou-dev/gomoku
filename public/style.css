@@ -17,25 +17,22 @@ html, body {
     margin: 0;
     overflow: hidden;
     touch-action: none; /* 阻止移动端页面滚动和下拉刷新 */
-    background-color: #2c3e50;
 }
 
 body {
     font-family: 'LocalKaiti', '楷体', 'STKaiti', 'Microsoft YaHei', sans-serif;
-    background-image: radial-gradient(circle, #44596e, #1a252f);
     color: #333;
     display: flex;
     justify-content: center;
     align-items: center;
     padding: 10px;
     box-sizing: border-box;
-    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.5s ease-out;
 }
 
 body.loaded {
-    background: #2c3e50;
-    background-image: radial-gradient(circle, #44596e, #1a252f);
-    visibility: visible;
+    opacity: 1;
 }
 
 .game-container {
