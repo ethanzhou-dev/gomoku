@@ -29,6 +29,11 @@ body {
     box-sizing: border-box;
 }
 
+body.loaded {
+    opacity: 1 !important;
+    transition: opacity 0.3s ease-out;
+}
+
 .game-container {
     background: linear-gradient(135deg, #e6d0a7, #c6a26d);
     border: 8px solid #5c3a21;
@@ -44,12 +49,6 @@ body {
     width: 100%;
     max-width: 500px;
     max-height: 100%;
-    opacity: 0;
-    transition: opacity 0.5s ease-out;
-}
-
-body.loaded .game-container {
-    opacity: 1;
 }
 
 .header {

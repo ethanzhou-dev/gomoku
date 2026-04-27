@@ -6,11 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>经典五子棋</title>
     <style>
-        /* 关键渲染路径优化：将最终的渐变背景直接挂载到 html 根节点 */
+        /* 移除 background-color 防止单色闪烁，直接使用渐变，确保网页背景一次性渲染 */
         html {
-            background-color: #2c3e50;
-            background-image: radial-gradient(circle, #44596e, #1a252f);
-            height: 100%;
+            background: radial-gradient(circle, #44596e, #1a252f) no-repeat;
+            background-size: cover;
+            min-height: 100%;
+        }
+        /* 初始隐藏整个内容，避免看到未加载完的棋盘 */
+        body {
+            opacity: 0;
         }
     </style>
     <link rel="preload" href="simkai-lite.ttf" as="font" type="font/ttf" crossorigin>
