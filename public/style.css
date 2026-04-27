@@ -143,11 +143,12 @@ canvas {
 .skeuo-btn::before {
     content: '';
     position: absolute;
-    top: -15px; /* 向上增加更多热区，解决顶部边缘按了没反应的问题 */
-    left: -10px;
-    right: -10px;
-    bottom: -10px;
+    top: -4px; /* 适度增加顶部热区，补偿位移并确保边缘灵敏 */
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
     z-index: 10;
+    border-radius: 8px; /* 增加圆角使热区更贴合视觉形状 */
 }
 
 .skeuo-btn:active {
