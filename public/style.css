@@ -143,14 +143,11 @@ canvas {
 .skeuo-btn::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    top: -15px; /* 向上增加更多热区，解决顶部边缘按了没反应的问题 */
+    left: -10px;
+    right: -10px;
+    bottom: -10px;
     z-index: 10;
-    /* 即使父元素 transform，伪元素也会随之移动，
-       但我们通过相反的位移抵消它，或者让它足够大 */
-    margin: -10px; /* 向外扩展热区，确保即使移动也覆盖原位 */
 }
 
 .skeuo-btn:active {
