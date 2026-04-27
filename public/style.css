@@ -19,13 +19,10 @@ html, body {
     touch-action: none; /* 阻止移动端页面滚动和下拉刷新 */
 }
 
-html {
-    background: #2c3e50;
-    background-image: radial-gradient(circle, #44596e, #1a252f);
-}
-
 body {
     font-family: 'LocalKaiti', '楷体', 'STKaiti', 'Microsoft YaHei', sans-serif;
+    background: #2c3e50;
+    background-image: radial-gradient(circle, #44596e, #1a252f);
     color: #333;
     display: flex;
     justify-content: center;
