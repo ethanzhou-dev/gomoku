@@ -137,16 +137,17 @@ canvas {
     outline: none;
     position: relative;
     touch-action: manipulation;
+    overflow: visible; /* 确保伪元素扩展的点击区域不被裁切 */
 }
 
 .skeuo-btn::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 1;
+    top: -5px; /* 向上扩展，覆盖点击时的位移差 */
+    left: -5px;
+    right: -5px;
+    bottom: -5px;
+    z-index: 10; /* 确保在按钮内容之上，捕获所有点击 */
 }
 
 .skeuo-btn:active {
@@ -155,11 +156,6 @@ canvas {
         inset 0 2px 5px rgba(0,0,0,0.4),
         0 1px 1px rgba(0,0,0,0.2);
     transform: translateY(2px);
-}
-
-.skeuo-btn:active::before {
-    top: -2px;
-    height: calc(100% + 2px);
 }
 
 .mode-selector, .difficulty-selector {
