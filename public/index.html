@@ -17,9 +17,11 @@
             <div class="status" id="status" style="margin-top: 5px; z-index: 1;">&nbsp;</div>
         </div>
 
-        <div class="board-container" style="position: relative;">
-            <canvas id="chessBoardBg" width="450" height="450" style="position: absolute; z-index: 1; pointer-events: none;"></canvas>
-            <canvas id="chessBoard" width="450" height="450" style="position: relative; z-index: 2;"></canvas>
+        <div class="board-container">
+            <div style="position: relative; width: 100%; max-width: 100%; height: auto; max-height: 100%; aspect-ratio: 1 / 1;">
+                <canvas id="chessBoardBg" width="450" height="450" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none;"></canvas>
+                <canvas id="chessBoard" width="450" height="450" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2;"></canvas>
+            </div>
         </div>
 
         <div class="controls">
