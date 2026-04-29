@@ -4,15 +4,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="baidu-site-verification" content="codeva-UFwzIQovxc" />
     <title>经典五子棋</title>
     <style>
-        /* 移除 background-color 防止单色闪烁，直接使用渐变，确保网页背景一次性渲染 */
         html {
             background: radial-gradient(circle, #44596e, #1a252f) no-repeat;
             background-size: cover;
             min-height: 100%;
         }
-        /* 初始隐藏整个内容，避免看到未加载完的棋盘 */
+
         body {
             opacity: 0;
         }
@@ -25,15 +25,19 @@
 
 <body>
     <div class="game-container">
-        <div class="header" style="position: relative; width: 100%; display: flex; flex-direction: column; align-items: center; min-height: 70px;">
+        <div class="header"
+            style="position: relative; width: 100%; display: flex; flex-direction: column; align-items: center; min-height: 70px;">
             <h1 style="margin: 0; z-index: 1;">经典五子棋</h1>
             <div class="status" id="status" style="margin-top: 5px; z-index: 1;">&nbsp;</div>
         </div>
 
         <div class="board-container">
-            <div style="position: relative; width: 100%; max-width: 100%; height: auto; max-height: 100%; aspect-ratio: 1 / 1;">
-                <canvas id="chessBoardBg" width="450" height="450" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none;"></canvas>
-                <canvas id="chessBoard" width="450" height="450" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2;"></canvas>
+            <div
+                style="position: relative; width: 100%; max-width: 100%; height: auto; max-height: 100%; aspect-ratio: 1 / 1;">
+                <canvas id="chessBoardBg" width="450" height="450"
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none;"></canvas>
+                <canvas id="chessBoard" width="450" height="450"
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2;"></canvas>
             </div>
         </div>
 
@@ -50,7 +54,7 @@
     <div id="settings-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content game-container">
             <h2 style="margin-bottom: 15px; color: #4a2f18; text-shadow: 1px 1px 0px rgba(255,255,255,0.6);">游戏设置</h2>
-            
+
             <div class="settings-group">
                 <div class="mode-selector" style="width: 100%; justify-content: center; margin-bottom: 10px;">
                     <label class="skeuo-radio">
@@ -58,7 +62,7 @@
                         <span style="color: #a7281c;">开启禁手(仅黑棋)</span>
                     </label>
                 </div>
-                
+
                 <div class="mode-selector" style="width: 100%; justify-content: center; margin-bottom: 10px;">
                     <label class="skeuo-radio">
                         <input type="radio" name="boardSize" value="11">
@@ -73,7 +77,7 @@
                         <span>15×15</span>
                     </label>
                 </div>
-                
+
                 <div class="mode-selector" style="width: 100%; justify-content: center; margin-bottom: 10px;">
                     <label class="skeuo-radio">
                         <input type="radio" name="mode" value="pve" checked>
@@ -84,8 +88,9 @@
                         <span>双人对战</span>
                     </label>
                 </div>
-                
-                <div class="mode-selector" id="color-selector" style="width: 100%; justify-content: center; margin-bottom: 10px;">
+
+                <div class="mode-selector" id="color-selector"
+                    style="width: 100%; justify-content: center; margin-bottom: 10px;">
                     <label class="skeuo-radio">
                         <input type="radio" name="playerColor" value="1" checked>
                         <span>执黑(先手)</span>
@@ -97,7 +102,8 @@
                 </div>
 
                 <div class="dynamic-setting-area" style="width: 100%; display: grid; margin-bottom: 15px;">
-                    <div class="mode-selector" id="pvp-type-selector" style="grid-area: 1/1; width: 100%; justify-content: center; display: none;">
+                    <div class="mode-selector" id="pvp-type-selector"
+                        style="grid-area: 1/1; width: 100%; justify-content: center; display: none;">
                         <label class="skeuo-radio">
                             <input type="radio" name="pvpType" value="local" checked>
                             <span>本地</span>
@@ -108,7 +114,8 @@
                         </label>
                     </div>
 
-                    <div class="difficulty-selector" id="diff-selector" style="grid-area: 1/1; width: 100%; justify-content: center; display: flex;">
+                    <div class="difficulty-selector" id="diff-selector"
+                        style="grid-area: 1/1; width: 100%; justify-content: center; display: flex;">
                         <label class="skeuo-radio">
                             <input type="radio" name="difficulty" value="2">
                             <span>简单</span>
@@ -133,8 +140,7 @@
         <div class="modal-content game-container">
             <h2 style="margin-bottom: 15px; color: #4a2f18; text-shadow: 1px 1px 0px rgba(255,255,255,0.6);">设置昵称</h2>
             <div style="width: 100%; margin-bottom: 15px;">
-                <input type="text" id="nickname-input" placeholder="仅限英文或数字" 
-                    style="width: 100%; padding: 8px; font-size: 16px; font-family: inherit; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1); outline: none; box-sizing: border-box; 
+                <input type="text" id="nickname-input" placeholder="仅限英文或数字" style="width: 100%; padding: 8px; font-size: 16px; font-family: inherit; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1); outline: none; box-sizing: border-box; 
                            background: rgba(0,0,0,0.08); color: #4a2f18; font-weight: bold;
                            box-shadow: inset 0 2px 5px rgba(0,0,0,0.2); text-align: center;">
                 <div style="font-size: 12px; color: #7a5a3a; margin-top: 5px; text-align: center;">(仅限字母和数字)</div>
@@ -146,15 +152,20 @@
 
     <!-- 房间列表模态框 -->
     <div id="room-list-modal" class="modal-overlay" style="display: none;">
-        <div class="modal-content game-container" style="max-width: 400px; max-height: 80vh; display: flex; flex-direction: column;">
-            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 15px;">
-                <h2 style="color: #4a2f18; text-shadow: 1px 1px 0px rgba(255,255,255,0.6); margin: 0; font-size: 22px;">房间列表</h2>
+        <div class="modal-content game-container"
+            style="max-width: 400px; max-height: 80vh; display: flex; flex-direction: column;">
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 15px;">
+                <h2 style="color: #4a2f18; text-shadow: 1px 1px 0px rgba(255,255,255,0.6); margin: 0; font-size: 22px;">
+                    房间列表</h2>
                 <div style="font-size: 14px; color: #4a2f18;">
                     <span id="current-nickname" style="font-weight: bold;"></span>
-                    <a href="#" id="btn-change-nickname" style="color: #4a2f18; text-decoration: underline; margin-left: 5px; font-weight: normal;">[修改]</a>
+                    <a href="#" id="btn-change-nickname"
+                        style="color: #4a2f18; text-decoration: underline; margin-left: 5px; font-weight: normal;">[修改]</a>
                 </div>
             </div>
-            <div id="room-list-container" style="flex-grow: 1; overflow-y: auto; width: 100%; background: rgba(0,0,0,0.08); border-radius: 8px; padding: 10px; margin-bottom: 15px; border: 1px solid rgba(0,0,0,0.1); box-shadow: inset 0 2px 5px rgba(0,0,0,0.2); min-height: 200px;">
+            <div id="room-list-container"
+                style="flex-grow: 1; overflow-y: auto; width: 100%; background: rgba(0,0,0,0.08); border-radius: 8px; padding: 10px; margin-bottom: 15px; border: 1px solid rgba(0,0,0,0.1); box-shadow: inset 0 2px 5px rgba(0,0,0,0.2); min-height: 200px;">
                 <!-- 房间项将在这里生成 -->
                 <div style="text-align: center; color: #555; padding: 20px;">正在加载房间...</div>
             </div>
@@ -169,11 +180,14 @@
     <!-- 等待对手模态框 -->
     <div id="waiting-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content game-container">
-            <h2 style="margin-bottom: 15px; color: #4a2f18; text-shadow: 1px 1px 0px rgba(255,255,255,0.6);">等待对手加入...</h2>
+            <h2 style="margin-bottom: 15px; color: #4a2f18; text-shadow: 1px 1px 0px rgba(255,255,255,0.6);">等待对手加入...
+            </h2>
             <div style="text-align: center; margin-bottom: 20px; color: #333;">
                 房间号: <span id="waiting-room-id" style="font-weight: bold; font-size: 24px; color: #8e44ad;"></span>
             </div>
-            <div class="spinner" style="margin: 0 auto 20px auto; width: 40px; height: 40px; border: 4px solid rgba(0,0,0,0.1); border-left-color: #4a2f18; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            <div class="spinner"
+                style="margin: 0 auto 20px auto; width: 40px; height: 40px; border: 4px solid rgba(0,0,0,0.1); border-left-color: #4a2f18; border-radius: 50%; animation: spin 1s linear infinite;">
+            </div>
             <button id="btn-leave-waiting" class="skeuo-btn" style="width: 100%;">取消并离开</button>
         </div>
     </div>
@@ -181,7 +195,8 @@
     <!-- 游戏结束/对方离开提示框 -->
     <div id="alert-modal" class="modal-overlay" style="display: none; z-index: 2000;">
         <div class="modal-content game-container" style="text-align: center;">
-            <h2 id="alert-title" style="margin-bottom: 15px; color: #4a2f18; text-shadow: 1px 1px 0px rgba(255,255,255,0.6);">提示</h2>
+            <h2 id="alert-title"
+                style="margin-bottom: 15px; color: #4a2f18; text-shadow: 1px 1px 0px rgba(255,255,255,0.6);">提示</h2>
             <p id="alert-msg" style="margin-bottom: 20px; font-size: 16px; color: #333;"></p>
             <button id="btn-alert-ok" class="skeuo-btn" style="width: 100%;">确定</button>
         </div>
@@ -189,33 +204,43 @@
 
     <style>
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
+
         .room-item {
-            background: rgba(255,255,255,0.4);
-            border: 1px solid rgba(0,0,0,0.1);
+            background: rgba(255, 255, 255, 0.4);
+            border: 1px solid rgba(0, 0, 0, 0.1);
             border-radius: 6px;
             padding: 10px;
             margin-bottom: 8px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
+
         .room-item:last-child {
             margin-bottom: 0;
         }
+
         .room-info {
             display: flex;
             flex-direction: column;
             gap: 4px;
         }
+
         .room-name {
             font-weight: bold;
             color: #4a2f18;
             font-size: 16px;
         }
+
         .room-details {
             font-size: 12px;
             color: #555;
