@@ -48,8 +48,10 @@ npm start
     ├── ai-worker.js    # AI 算法逻辑 (Web Worker)
     ├── favicon.png     # 网站图标
     ├── index.html      # 主入口
+    ├── robots.txt      # 搜索引擎爬虫协议文件 (SEO)
     ├── rules.js        # 公用游戏规则逻辑 (胜负判定、禁手)
     ├── simkai-lite.ttf # 字体文件
+    ├── sitemap.xml     # 网站地图 (SEO)
     ├── style.css       # 游戏样式
     └── js/             # 客户端模块化逻辑
         ├── game.js     # 游戏核心逻辑
