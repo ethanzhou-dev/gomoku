@@ -40,15 +40,24 @@ npm start
 ##  项目结构
 
 ```text
-├── server.js           # Express/Socket.io 服务端逻辑
-├── public/
-│   ├── js/             # 客户端模块化逻辑 (游戏控制、渲染、网络等)
-│   ├── ai-worker.js    # AI 算法逻辑 (Web Worker)
-│   ├── rules.js        # 公用游戏规则逻辑 (胜负判定、禁手)
-│   ├── index.html      # 主入口
-│   └── style.css       # 游戏样式
+├── package-lock.json   # 依赖锁定文件
 ├── package.json        # 项目配置与依赖
-└── README.md
+├── README.md           # 项目说明文档
+├── server.js           # Express/Socket.io 服务端逻辑
+└── public/
+    ├── ai-worker.js    # AI 算法逻辑 (Web Worker)
+    ├── favicon.png     # 网站图标
+    ├── index.html      # 主入口
+    ├── rules.js        # 公用游戏规则逻辑 (胜负判定、禁手)
+    ├── simkai-lite.ttf # 字体文件
+    ├── style.css       # 游戏样式
+    └── js/             # 客户端模块化逻辑
+        ├── game.js     # 游戏核心逻辑
+        ├── gameState.js# 状态管理
+        ├── main.js     # 前端入口
+        ├── network.js  # 网络通信
+        ├── renderer.js # 棋盘渲染
+        └── ui.js       # UI 交互控制
 ```
 
 ##  许可
