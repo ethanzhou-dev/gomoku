@@ -6110,7 +6110,12 @@
      * @returns 
      */
     getMoves(role, depth, onThree = false, onlyFour = false) {
-      const moves = Array.from(this._getMoves(role, depth, onThree, onlyFour)).map((move) => [Math.floor(move / this.size), move % this.size]);
+      let moves = Array.from(this._getMoves(role, depth, onThree, onlyFour)).map((move) => [Math.floor(move / this.size), move % this.size]);
+      moves.sort((a, b) => {
+        let scoreA = this.blackScores[a[0]][a[1]] + this.whiteScores[a[0]][a[1]];
+        let scoreB = this.blackScores[b[0]][b[1]] + this.whiteScores[b[0]][b[1]];
+        return scoreB - scoreA;
+      });
       return moves;
     }
     _getMoves(role, depth, onlyThree = false, onlyFour = false) {
@@ -6134,7 +6139,15 @@
       const blockthrees = points[shapes.BLOCK_THREE];
       const two_twos = points[shapes.TWO_TWO];
       const twos = points[shapes.TWO];
-      const res = new Set([...blockfours, ...threes, ...blockthrees, ...two_twos, ...twos].slice(0, config.pointsLimit));
+      let combined = [...blockfours, ...threes, ...blockthrees, ...two_twos, ...twos];
+      combined.sort((a, b) => {
+        const xa = Math.floor(a / this.size), ya = a % this.size;
+        const xb = Math.floor(b / this.size), yb = b % this.size;
+        const scoreA = this.blackScores[xa][ya] + this.whiteScores[xa][ya];
+        const scoreB = this.blackScores[xb][yb] + this.whiteScores[xb][yb];
+        return scoreB - scoreA;
+      });
+      const res = new Set(combined.slice(0, config.pointsLimit));
       return res;
     }
     display() {
