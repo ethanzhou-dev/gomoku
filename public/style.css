@@ -12,6 +12,12 @@
     font-display: block;
 }
 
+html {
+    background: radial-gradient(circle, #44596e, #1a252f) no-repeat;
+    background-size: cover;
+    min-height: 100%;
+}
+
 html, body {
     height: 100%;
     margin: 0;
@@ -27,6 +33,7 @@ body {
     align-items: center;
     padding: 10px;
     box-sizing: border-box;
+    opacity: 0;
 }
 
 body.loaded {
@@ -52,6 +59,12 @@ body.loaded {
 }
 
 .header {
+    position: relative;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 70px;
     text-align: center;
     margin-bottom: 10px;
     color: #4a2f18;
@@ -59,13 +72,16 @@ body.loaded {
 }
 
 .header h1 {
+    margin: 0;
+    z-index: 1;
     font-size: 26px;
     letter-spacing: 2px;
-    margin-bottom: 8px;
     text-shadow: 1px 1px 0px rgba(255,255,255,0.6), -1px -1px 0px rgba(0,0,0,0.2);
 }
 
 .status {
+    margin-top: 5px;
+    z-index: 1;
     font-size: 16px;
     font-weight: bold;
     display: inline-block;
@@ -98,6 +114,15 @@ body.loaded {
     min-height: 0;
 }
 
+.canvas-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    max-height: 100%;
+    aspect-ratio: 1 / 1;
+}
+
 canvas {
     background: transparent;
     cursor: pointer;
@@ -108,6 +133,25 @@ canvas {
     max-height: 100%;
     aspect-ratio: 1 / 1;
     touch-action: none; /* 阻止移动端触摸滚动干扰下棋 */
+}
+
+#chessBoardBg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: none;
+}
+
+#chessBoard {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
 }
 
 .controls {
@@ -267,4 +311,235 @@ canvas {
     flex-direction: column;
     align-items: center;
     width: 100%;
+}
+
+/* Extracted Inline Styles */
+.hidden {
+    display: none;
+}
+
+.modal-title {
+    margin-bottom: 15px;
+    color: #4a2f18;
+    text-shadow: 1px 1px 0px rgba(255,255,255,0.6);
+}
+
+.mode-selector-full {
+    width: 100%;
+    justify-content: center;
+    margin-bottom: 10px;
+}
+
+.text-danger {
+    color: #a7281c;
+}
+
+.dynamic-setting-area {
+    width: 100%;
+    display: grid;
+    margin-bottom: 15px;
+}
+
+.grid-layer {
+    grid-area: 1/1;
+    width: 100%;
+    justify-content: center;
+}
+
+.flex-layer {
+    display: flex;
+}
+
+.btn-full {
+    width: 100%;
+}
+
+.btn-mt {
+    margin-top: 10px;
+}
+
+.modal-z-1100 {
+    z-index: 1100;
+}
+
+.modal-z-2000 {
+    z-index: 2000;
+}
+
+.input-container {
+    width: 100%;
+    margin-bottom: 15px;
+}
+
+.nickname-input {
+    width: 100%;
+    padding: 8px;
+    font-size: 16px;
+    font-family: inherit;
+    border-radius: 8px;
+    border: 1px solid rgba(0,0,0,0.1);
+    outline: none;
+    box-sizing: border-box;
+    background: rgba(0,0,0,0.08);
+    color: #4a2f18;
+    font-weight: bold;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);
+    text-align: center;
+}
+
+.input-hint {
+    font-size: 12px;
+    color: #7a5a3a;
+    margin-top: 5px;
+    text-align: center;
+}
+
+.room-list-content {
+    max-width: 400px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.room-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 15px;
+}
+
+.room-list-title {
+    color: #4a2f18;
+    text-shadow: 1px 1px 0px rgba(255,255,255,0.6);
+    margin: 0;
+    font-size: 22px;
+}
+
+.nickname-display {
+    font-size: 14px;
+    color: #4a2f18;
+}
+
+.nickname-bold {
+    font-weight: bold;
+}
+
+.btn-link {
+    color: #4a2f18;
+    text-decoration: underline;
+    margin-left: 5px;
+    font-weight: normal;
+}
+
+.room-list-container {
+    flex-grow: 1;
+    overflow-y: auto;
+    width: 100%;
+    background: rgba(0,0,0,0.08);
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid rgba(0,0,0,0.1);
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);
+    min-height: 200px;
+}
+
+.loading-text {
+    text-align: center;
+    color: #555;
+    padding: 20px;
+}
+
+.room-list-actions {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    flex-shrink: 0;
+}
+
+.flex-btn {
+    flex: 1;
+    padding: 8px 5px;
+}
+
+.waiting-info {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.room-id-highlight {
+    font-weight: bold;
+    font-size: 24px;
+    color: #8e44ad;
+}
+
+.spinner {
+    margin: 0 auto 20px auto;
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(0,0,0,0.1);
+    border-left-color: #4a2f18;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.alert-msg {
+    margin-bottom: 20px;
+    font-size: 16px;
+    color: #333;
+}
+
+.seo-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    border: 0;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.room-item {
+    background: rgba(255, 255, 255, 0.4);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.room-item:last-child {
+    margin-bottom: 0;
+}
+
+.room-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.room-name {
+    font-weight: bold;
+    color: #4a2f18;
+    font-size: 16px;
+}
+
+.room-details {
+    font-size: 12px;
+    color: #555;
 }
