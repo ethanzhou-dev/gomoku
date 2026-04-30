@@ -498,8 +498,18 @@ export class Game {
             this.aiWorker = null;
             this.isAILoading = false;
         }
-        this.network.emit('leaveRoom', this.currentRoomId);
-        this.network.disconnect();
+        if (this.currentRoomId) {
+            this.network.emit('leaveRoom', this.currentRoomId);
+            this.currentRoomId = null;
+        }
+        
+        // 稍微延迟断开连接，确保 leaveRoom 消息能发送到服务器
+        setTimeout(() => {
+            if (this.network) {
+                this.network.disconnect();
+            }
+        }, 100);
+
         this.isOnline = false;
         this.settings.mode = 'pve';
         this.settings.pvpType = 'local';
