@@ -370,12 +370,18 @@ io.on('connection', (socket) => {
                     
                     // Disconnected notification removed as per user request
                     
-                    // 启动 60s 清理计时器
-                    users[sId].disconnectTimer = setTimeout(() => {
-                        console.log('Session expired, cleaning up:', sId);
+                    if (room && room.status === 'playing' && !room.over) {
+                        // 启动 60s 清理计时器
+                        users[sId].disconnectTimer = setTimeout(() => {
+                            console.log('Session expired, cleaning up:', sId);
+                            handleLeaveRoom(sId, roomId);
+                            delete users[sId];
+                        }, 60000);
+                    } else {
+                        console.log('Not playing or game over, leaving immediately:', sId);
                         handleLeaveRoom(sId, roomId);
                         delete users[sId];
-                    }, 60000);
+                    }
                 } else {
                     // 不在房间内，直接删除
                     delete users[sId];

@@ -515,12 +515,12 @@ export class Game {
             this.currentRoomId = null;
         }
         
-        // 稍微延迟断开连接，确保 leaveRoom 消息能发送到服务器
+        // 延迟断开连接，确保 leaveRoom 消息能发送到服务器
         setTimeout(() => {
             if (this.network) {
                 this.network.disconnect();
             }
-        }, 100);
+        }, 1000);
 
         this.isOnline = false;
         this.settings.mode = 'pve';
