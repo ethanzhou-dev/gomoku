@@ -402,7 +402,7 @@ io.on('connection', (socket) => {
             if (room.guest) {
                 const guestUser = users[room.guest];
                 if (guestUser) {
-                    io.to(guestUser.socketId).emit('opponentLeft');
+                    io.to(guestUser.socketId).emit('opponentLeft', { role: 'host' });
                     guestUser.roomId = null;
                     const guestSocket = io.sockets.sockets.get(guestUser.socketId);
                     if (guestSocket) guestSocket.leave(roomId);
@@ -412,7 +412,7 @@ io.on('connection', (socket) => {
         } else if (room.guest === sId) {
             const hostUser = users[room.host];
             if (hostUser) {
-                io.to(hostUser.socketId).emit('opponentLeft');
+                io.to(hostUser.socketId).emit('opponentLeft', { role: 'guest' });
             }
             room.guest = null;
             room.status = 'waiting';

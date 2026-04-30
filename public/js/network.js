@@ -60,7 +60,7 @@ export class Network {
         this.socket.on('roomCreated', (roomId) => this.callbacks.onRoomCreated(roomId));
         this.socket.on('gameStart', (data) => this.callbacks.onGameStart(data));
         this.socket.on('gameStateUpdate', (state) => this.callbacks.onGameStateUpdate(state));
-        this.socket.on('opponentLeft', () => this.callbacks.onOpponentLeft());
+        this.socket.on('opponentLeft', (data) => this.callbacks.onOpponentLeft(data));
         this.socket.on('opponentDisconnected', (data) => {
             if (this.callbacks.onOpponentDisconnected) this.callbacks.onOpponentDisconnected(data);
         });

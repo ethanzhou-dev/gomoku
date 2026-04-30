@@ -81,9 +81,21 @@ export class Game {
                 }
                 this.drawBoard();
             },
-            onOpponentLeft: () => {
-                this.ui.showAlert('对手已离开房间，正在返回大厅...');
-                this.backToLobby();
+            onOpponentLeft: (data) => {
+                if (data && data.role === 'guest') {
+                    // Guest left. Host stays in the waiting room.
+                    this.ui.showAlert('对手已退出房间，等待新玩家加入...');
+                    this.isAILoading = false;
+                    this.gameState.init(this.settings.boardSize);
+                    this.hintPos = null;
+                    this.ui.hideModal('modalRoomList');
+                    this.ui.showModal('modalWaiting');
+                    this.startGame(true); 
+                } else {
+                    // Host left. Guest must return to lobby.
+                    this.ui.showAlert('房主已解散房间，正在返回大厅...');
+                    this.backToLobby();
+                }
             },
             onOpponentDisconnected: (data) => {
                 // Logic removed as per user request
