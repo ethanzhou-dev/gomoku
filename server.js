@@ -404,6 +404,8 @@ io.on('connection', (socket) => {
                 if (guestUser) {
                     io.to(guestUser.socketId).emit('opponentLeft');
                     guestUser.roomId = null;
+                    const guestSocket = io.sockets.sockets.get(guestUser.socketId);
+                    if (guestSocket) guestSocket.leave(roomId);
                 }
             }
             delete rooms[roomId];
