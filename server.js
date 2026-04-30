@@ -87,6 +87,8 @@ io.on('connection', (socket) => {
                         winner: room.winner
                     });
                 });
+            } else {
+                socket.emit('roomList', getAvailableRooms());
             }
         } else {
             // New connection with sessionId
@@ -97,6 +99,7 @@ io.on('connection', (socket) => {
                 roomId: null
             };
             socketToSession[socket.id] = sessionId;
+            socket.emit('roomList', getAvailableRooms());
         }
     }
 
