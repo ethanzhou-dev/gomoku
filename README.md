@@ -1,5 +1,7 @@
 # Gomoku Online (五子棋在线对战)
 
+![Node.js](https://img.shields.io/badge/Node.js-Express-339933?logo=nodedotjs&logoColor=white) ![Socket.io](https://img.shields.io/badge/Socket.io-Realtime-010101?logo=socketdotio&logoColor=white) ![JavaScript](https://img.shields.io/badge/JavaScript-Vanilla-F7DF1E?logo=javascript&logoColor=black)
+
 一个基于 Node.js 和 Socket.io 实现的实时在线五子棋游戏。支持在线房间对战、AI 模式、禁手规则及断线重连。
 
 ## 核心功能
@@ -62,6 +64,6 @@ npm start
         └── ui.js       # UI 交互控制
 ```
 
-##  许可
+## 📄 许可证 (License)
 
-MIT License
+本项目基于 [MIT](LICENSE) 协议开源。
