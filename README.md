@@ -19,25 +19,6 @@
 - **前端**: 原生 JavaScript (ES6+), CSS3, HTML5
 - **性能优化**: 开启 Gzip 压缩 (`compression`)，AI 计算运行在 Web Worker。
 
-## 🚀 快速开始
-
-### 1. 克隆项目
-```bash
-git clone https://github.com/Ethan-iae/Gomoku.git
-cd Gomoku
-```
-
-### 2. 安装依赖
-```bash
-npm install
-```
-
-### 3. 启动服务
-```bash
-npm start
-```
-默认运行在 `http://localhost:3000`。
-
 ## 📂 项目结构
 
 ```text
